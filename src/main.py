@@ -494,7 +494,7 @@ class MovieProcessor(BaseProcessor):
             self.subsvc.process(subs, v)
 
 
-def PROCESS(root: Path, mapper: LocaleMapper, fops: FileOps, gen_nfo: bool) -> None:
+def walk_and_process(root: Path, mapper: LocaleMapper, fops: FileOps, gen_nfo: bool) -> None:
     files, dirs = list_files_and_dirs(root)
     has_files = len(files) > 0
 
@@ -515,7 +515,7 @@ def PROCESS(root: Path, mapper: LocaleMapper, fops: FileOps, gen_nfo: bool) -> N
 
     if choice == "shows":
         for d in dirs:
-            PROCESS(root / d.name, mapper, fops, gen_nfo)
+            walk_and_process(root / d.name, mapper, fops, gen_nfo)
         return
 
     if choice == "seasons":
@@ -570,7 +570,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             log(f"[MAP-CLI] {r}")
 
         try:
-            PROCESS(root, mapper, fops, a.generate_nfo)
+            walk_and_process(root, mapper, fops, a.generate_nfo)
         except KeyboardInterrupt:
             print("\n[ABORTED] by user.")
             return 130
