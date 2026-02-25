@@ -76,8 +76,8 @@ class LocaleMapper:
         return (t == r.source) if r.case_sensitive else (t.lower() == r.source.lower())
 
     def resolve(self, token: str) -> str:
-        for table in (self.cli_rules, self.csv_rules):
-            for r in table:
+        for src in (self.cli_rules, self.csv_rules):
+            for r in src:
                 if self._match(r, token):
                     return r.target
         return token
@@ -89,7 +89,7 @@ def parse_cli_rules(cli_rules: Sequence[str]) -> List[Rule]:
         parts = [x.strip() for x in spec.split(",")]
         if len(parts) != 3:
             raise ValueError(
-                "Mapping rule must be: source,target,case_sensitive")
+                f"Invalid CLI rule: {spec} (expected 'source,target,case_sensitive')")
         out.append(Rule(parts[0], parts[1],
                    parts[2].lower() in ("1", "true", "yes", "y")))
     return out
@@ -102,11 +102,11 @@ def load_csv_rules(csv_path: Optional[Path]) -> List[Rule]:
         raise FileNotFoundError(f"Mapping CSV not found: {csv_path}")
     rules: List[Rule] = []
     with csv_path.open("r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        if not reader.fieldnames:
+        r = csv.DictReader(f)
+        if not r.fieldnames:
             return rules
-        field = {k.lower(): k for k in reader.fieldnames}
-        for row in reader:
+        field = {k.lower(): k for k in r.fieldnames}
+        for row in r:
             src = row[field.get("source", "source")].strip()
             if not src:
                 continue
@@ -416,34 +416,40 @@ class ShowProcessor(BaseProcessor):
             self.subsvc.process(subs, v)
 
         if self.generate_nfo:
-            self._generate_nfo_for(season_dir, season)
+            videos_for_nfo = (
+                moved_videos if self.fops.dry else
+                sorted([p for p in (season_dir.iterdir() if season_dir.exists() else []) if p.is_file() and is_video(p)],
+                       key=natural_sort_key)
+            )
+            self._generate_nfo_for_videos(videos_for_nfo, season)
 
-    def _generate_nfo_for(self, season_dir: Path, season: int) -> None:
-        if not season_dir.exists():
-            log(f"[NFO] Season folder doesn't exist: {season_dir}")
-            return
-        videos = sorted([p for p in season_dir.iterdir()
-                        if p.is_file() and is_video(p)], key=natural_sort_key)
+    def _generate_nfo_for_videos(self, videos: List[Path], season: int) -> None:
         if not videos:
-            log("[NFO] No videos found.")
+            log("[NFO] No videos available for NFO generation.")
             return
-        overrides = UI.ask_nfo_overrides(videos, season)
-        defaults = {p: i + 1 for i, p in enumerate(videos)}
-        for idx, p in enumerate(videos, start=1):
+
+        videos_sorted = sorted(videos, key=natural_sort_key)
+        defaults = {p: i + 1 for i, p in enumerate(videos_sorted)}
+
+        overrides = UI.ask_nfo_overrides(videos_sorted, season)
+        for idx, p in enumerate(videos_sorted, start=1):
             ep = overrides.get(idx, defaults[p])
             nfo = p.with_suffix(".nfo")
+            if self.fops.dry:
+                log(
+                    f"[DRY-RUN NFO] Would create {nfo.name} (episode={ep}, season={season}) next to {p.name}")
+                continue
             if nfo.exists():
                 log(f"[SKIP] NFO exists: {nfo.name}")
                 continue
             log(f"[NFO] Create {nfo.name} (episode={ep}, season={season})")
-            if not nfo.exists():
-                nfo.write_text(
-                    '<?xml version="1.0" encoding="utf-8" standalone="yes"?>'
-                    '<episodedetails>'
-                    f'<episode>{ep}</episode><season>{season}</season>'
-                    '</episodedetails>',
-                    encoding="utf-8",
-                )
+            nfo.write_text(
+                '<?xml version="1.0" encoding="utf-8" standalone="yes"?>'
+                '<episodedetails>'
+                f'<episode>{ep}</episode><season>{season}</season>'
+                '</episodedetails>',
+                encoding="utf-8",
+            )
 
 
 class MovieProcessor(BaseProcessor):
