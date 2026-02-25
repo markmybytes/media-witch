@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+from __future__ import annotations
+
 import argparse
 import csv
 import os
@@ -9,14 +14,14 @@ from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 import inquirer
 
-VIDEO_EXTS: Set[str] = {".mkv", ".mp4", ".avi", ".mov", ".ts", ".m2ts", ".wmv"}
-AUDIO_EXTS: Set[str] = {".mka", ".aac", ".flac",
-                        ".dts", ".ac3", ".eac3", ".mp3", ".ogg", ".opus"}
-SUB_EXTS: Set[str] = {".ass", ".ssa", ".sup", ".srt"}
+VIDEO_EXTS = {".mkv", ".mp4", ".avi", ".mov", ".ts", ".m2ts", ".wmv"}
+AUDIO_EXTS = {".mka", ".aac", ".flac", ".dts",
+              ".ac3", ".eac3", ".mp3", ".ogg", ".opus"}
+SUB_EXTS = {".ass", ".ssa", ".sup", ".srt"}
 
-EPISODE_PATTERNS: List[re.Pattern] = [
+EPISODE_PATTERNS = [
     re.compile(r"(?i)\bS(\d{1,2})E(\d{1,3})\b"),
-    re.compile(r"\[(\d{1,3})\]"),
+    re.compile(r"\[(\d{1,3})\]")
 ]
 
 
@@ -38,6 +43,10 @@ def has_episode_pattern(name: str) -> bool:
 
 def natural_sort_key(p: Path) -> Tuple:
     return tuple(int(c) if c.isdigit() else c.lower() for c in re.split(r"(\d+)", p.name))
+
+
+def log(msg: str) -> None:
+    print(msg)
 
 
 def list_files_and_dirs(path: Path) -> Tuple[List[Path], List[Path]]:
@@ -63,26 +72,26 @@ class LocaleMapper:
         self.cli_rules = cli_rules
 
     @staticmethod
-    def _match(r: Rule, t: str) -> bool:
-        return (t == r.source) if r.case_sensitive else (t.lower() == r.source.lower())
+    def _match(rule: Rule, token: str) -> bool:
+        return token == rule.source if rule.case_sensitive else token.lower() == rule.source.lower()
 
     def resolve(self, token: str) -> str:
-        for src in (self.cli_rules, self.csv_rules):
-            for r in src:
-                if self._match(r, token):
-                    return r.target
+        for table in (self.cli_rules, self.csv_rules):
+            for rule in table:
+                if self._match(rule, token):
+                    return rule.target
         return token
 
 
 def parse_cli_rules(cli_rules: Sequence[str]) -> List[Rule]:
-    out: List[Rule] = []
+    out = []
     for spec in cli_rules:
         parts = [x.strip() for x in spec.split(",")]
         if len(parts) != 3:
             raise ValueError(
-                f"Invalid CLI rule: {spec} (expected 'source,target,case_sensitive')")
+                "Mapping rule must be: source,target,case_sensitive")
         out.append(Rule(parts[0], parts[1],
-                   parts[2].lower() in ("1", "true", "yes", "y")))
+                   parts[2].lower() in ("1", "true", "yes")))
     return out
 
 
@@ -90,66 +99,54 @@ def load_csv_rules(csv_path: Optional[Path]) -> List[Rule]:
     if not csv_path:
         return []
     if not csv_path.exists():
-        raise FileNotFoundError(f"Mapping CSV not found: {csv_path}")
-
-    rules: List[Rule] = []
+        raise FileNotFoundError(csv_path)
+    rules = []
     with csv_path.open("r", encoding="utf-8") as f:
-        r = csv.DictReader(f)
-        field = {k.lower(): k for k in (r.fieldnames or [])}
-        for row in r:
-            src = row[field.get("source", "source")].strip()
-            if not src:
-                continue
-            tgt = row[field.get("target", "target")].strip()
-            cs = row[field.get("is_case_sensitive",
-                               "is_case_sensitive")].strip()
-            rules.append(Rule(src, tgt, cs.lower()
-                         in ("1", "true", "yes", "y")))
+        reader = csv.DictReader(f)
+        field = {k.lower(): k for k in reader.fieldnames}
+        for row in reader:
+            src = row[field["source"]].strip()
+            tgt = row[field["target"]].strip()
+            cs = row[field["is_case_sensitive"]
+                     ].strip().lower() in ("1", "true", "yes")
+            rules.append(Rule(src, tgt, cs))
     return rules
 
 
 class FileOps:
-    def __init__(self, dry_run: bool) -> None:
-        self.dry = dry_run
+    def __init__(self, dry: bool) -> None:
+        self.dry = dry
 
     def ensure_dir(self, p: Path) -> None:
         if not p.exists():
-            print(f"[MKDIR] {p}")
+            log(f"[MKDIR] {p}")
             if not self.dry:
                 p.mkdir(parents=True, exist_ok=True)
 
     def move_file(self, src: Path, dst: Path) -> None:
         if src.resolve() == dst.resolve():
-            print(f"[SKIP] Already at dest: {src}")
+            log(f"[SKIP] Same location: {src}")
             return
         self.ensure_dir(dst.parent)
         if dst.exists():
-            print(f"[SKIP] Exists: {dst}")
+            log(f"[SKIP] Exists: {dst}")
             return
-        print(f"[MOVE] {src} -> {dst}")
+        log(f"[MOVE] {src} -> {dst}")
         if not self.dry:
             shutil.move(str(src), str(dst))
 
-    def rename_file(self, src: Path, dst: Path) -> None:
+    def move_dir_atomic(self, src: Path, dst: Path) -> None:
         if src.resolve() == dst.resolve():
+            log(f"[SKIP] Same dir: {src}")
             return
-        self.ensure_dir(dst.parent)
-        if dst.exists():
-            print(f"[SKIP] Exists: {dst}")
-            return
-        print(f"[RENAME] {src.name} -> {dst.name}")
-        if not self.dry:
-            src.rename(dst)
-
-    def remove_dir_if_empty(self, dir_path: Path) -> None:
-        try:
-            next(dir_path.iterdir())
-        except StopIteration:
-            print(f"[RMDIR] {dir_path}")
+        if not dst.exists():
+            self.ensure_dir(dst.parent)
+            log(f"[MOVE-DIR] {src} -> {dst}")
             if not self.dry:
-                dir_path.rmdir()
-        except PermissionError:
+                shutil.move(str(src), str(dst))
             return
+        log(f"[MERGE-DIR] {src} -> {dst}")
+        self.move_tree_merge(src, dst)
 
     def move_tree_merge(self, src_dir: Path, dst_dir: Path) -> None:
         self.ensure_dir(dst_dir)
@@ -161,91 +158,98 @@ class FileOps:
                 self.move_file(Path(root) / f, dst_dir / rel / f)
         self.remove_dir_if_empty(src_dir)
 
-    def move_dir_contents_to(self, src_dir: Path, dst_dir: Path) -> None:
-        self.ensure_dir(dst_dir)
-        for e in src_dir.iterdir():
-            t = dst_dir / e.name
-            self.move_tree_merge(e, t) if e.is_dir() else self.move_file(e, t)
-        self.remove_dir_if_empty(src_dir)
-
-    def move_dir_atomic(self, src_dir: Path, dst_dir: Path) -> None:
-        if src_dir.resolve() == dst_dir.resolve():
-            print(f"[SKIP] Already at dest: {src_dir}")
-            return
-        if not dst_dir.exists():
-            self.ensure_dir(dst_dir.parent)
-            print(f"[MOVE-DIR] {src_dir} -> {dst_dir}")
+    def remove_dir_if_empty(self, p: Path) -> None:
+        try:
+            next(p.iterdir())
+        except StopIteration:
+            log(f"[RMDIR] {p}")
             if not self.dry:
-                shutil.move(str(src_dir), str(dst_dir))
+                p.rmdir()
+        except PermissionError:
             return
-        print(f"[MERGE-DIR] {src_dir} -> {dst_dir}")
-        self.move_tree_merge(src_dir, dst_dir)
 
 
 class UI:
     @staticmethod
-    def ask_mode_for(folder: Path) -> str:
-        a = inquirer.prompt([
-            inquirer.List("mode", message=f"Select folder type for: {folder}",
-                          choices=[("TV Show", "show"), ("Movie", "movie")], default="show")
-        ])
-        return a["mode"]
+    def ask_processing_choice(path: Path, has_files: bool) -> str:
+        """
+        Returns one of:
+          - if has_files: 'show' | 'movie' | 'skip'
+          - if no files:  'skip' | 'shows' | 'seasons' | 'movies'
+        """
+        if has_files:
+            ans = inquirer.prompt([
+                inquirer.List(
+                    "c",
+                    message=f"Folder contains files:\n{path}\nSelect how to process:",
+                    choices=[
+                        ("TV Show", "show"),
+                        ("Movie", "movie"),
+                        ("Skip this folder", "skip"),
+                    ],
+                    default="skip",
+                )
+            ])
+            return ans["c"]
+        else:
+            ans = inquirer.prompt([
+                inquirer.List(
+                    "c",
+                    message=f"No files in folder:\n{path}\nWhat does this folder represent?",
+                    choices=[
+                        ("Skip this folder", "skip"),
+                        ("Contains multiple SHOWS", "shows"),
+                        ("Contains multiple SEASONS of the same show", "seasons"),
+                        ("Contains multiple MOVIE SEQUELS", "movies"),
+                    ],
+                    default="skip",
+                )
+            ])
+            return ans["c"]
 
     @staticmethod
-    def ask_yes_no(msg: str, default: bool = True) -> bool:
-        return bool(inquirer.prompt([inquirer.Confirm("yn", message=msg, default=default)])["yn"])
-
-    @staticmethod
-    def ask_season_number(default: int = 1) -> int:
+    def ask_season() -> int:
         while True:
-            s = inquirer.prompt([inquirer.Text("s", message="Enter season number for this unit",
-                                               default=str(default))])["s"].strip()
-            if s.isdigit() and int(s) > 0:
-                return int(s)
-            print("Please enter a positive integer.")
+            a = inquirer.prompt(
+                [inquirer.Text("s", message="Season number?", default="1")])["s"]
+            if a.isdigit() and int(a) > 0:
+                return int(a)
+            print("Enter positive integer.")
 
     @staticmethod
-    def checkbox_extras(items: List[Path], defaults_is_extra: List[bool]) -> List[bool]:
-        choices = [(f"{p.name}  [{'EXTRA' if d else 'PRIMARY'} · {'DIR' if p.is_dir() else 'FILE'}]", i)
-                   for i, (p, d) in enumerate(zip(items, defaults_is_extra))]
-
+    def checkbox_extras(items: List[Path], defaults: List[bool]) -> List[bool]:
+        choices = [(f"{p.name} [{'EXTRA' if d else 'PRIMARY'}]", i)
+                   for i, (p, d) in enumerate(zip(items, defaults))]
         checked = set(inquirer.prompt([
-            inquirer.Checkbox("ex", message="Mark items as EXTRAS (checked) vs PRIMARY (unchecked)",
-                              choices=choices, default=[
-                                  i for i, ex in enumerate(defaults_is_extra) if ex],
-                              carousel=True)
-        ]).get("ex", []))
-
-        res = [(i in checked) for i in range(len(items))]
-
-        print("\nFinal classification:")
-        for i, (p, ex) in enumerate(zip(items, res), 1):
-            print(f"{i:2d}) [{'EXTRA' if ex else 'PRIMARY'}] {p.name}")
-
-        return res
+            inquirer.Checkbox(
+                "sel",
+                message="Select EXTRAS",
+                choices=choices,
+                default=[i for i, v in enumerate(defaults) if v],
+                carousel=True,
+            )
+        ]).get("sel", []))
+        return [(i in checked) for i in range(len(items))]
 
     @staticmethod
-    def ask_nfo_overrides(videos_sorted: List[Path], season: int) -> Dict[int, int]:
-        defaults = {p: i + 1 for i, p in enumerate(videos_sorted)}
-
-        print("\nNFO Generation – default episode numbers:")
-        for p in videos_sorted:
-            print(f"  {p.name} -> episode {defaults[p]} (season {season})")
-
-        if not UI.ask_yes_no("Override any episode numbers?", default=False):
+    def ask_nfo_overrides(videos: List[Path], season: int) -> Dict[int, int]:
+        defaults = {p: i+1 for i, p in enumerate(videos)}
+        print("\nDefault episode numbers:")
+        for p in videos:
+            print(f"{p.name} -> {defaults[p]}")
+        if not inquirer.prompt([inquirer.Confirm("o", message="Override any?", default=False)])["o"]:
             return {}
-
-        ov: Dict[int, int] = {}
-        for idx, p in enumerate(videos_sorted, start=1):
-            if UI.ask_yes_no(f"Override for {p.name}? (default {defaults[p]})", default=False):
+        out: Dict[int, int] = {}
+        for idx, p in enumerate(videos, start=1):
+            if inquirer.prompt([inquirer.Confirm("c", message=f"Override {p.name}?", default=False)])["c"]:
                 while True:
-                    n = inquirer.prompt([inquirer.Text("n", message=f"Enter episode number for {p.name}",
-                                                       default=str(defaults[p]))])["n"].strip()
-                    if n.isdigit() and int(n) > 0:
-                        ov[idx] = int(n)
+                    val = inquirer.prompt([inquirer.Text("n", message=f"Episode number for {p.name}",
+                                                         default=str(defaults[p]))])["n"]
+                    if val.isdigit() and int(val) > 0:
+                        out[idx] = int(val)
                         break
-                    print("Please enter a positive integer.")
-        return ov
+                    print("Enter positive integer.")
+        return out
 
 
 class SubtitleService:
@@ -254,7 +258,7 @@ class SubtitleService:
         self.fops = fops
 
     @staticmethod
-    def _right_most_token(sub: Path) -> str:
+    def _rightmost_token(sub: Path) -> str:
         parts = sub.stem.split(".")
         return parts[-1] if len(parts) > 1 else ""
 
@@ -265,21 +269,19 @@ class SubtitleService:
 
     @staticmethod
     def pairs_with(sub: Path, video: Path) -> bool:
-        return sub.stem == video.stem or sub.stem.startswith(f"{video.stem}.")
+        return sub.stem == video.stem or sub.stem.startswith(video.stem + ".")
 
     def normalized_target(self, sub: Path, video: Path) -> Path:
-        t = self._right_most_token(sub)
-        mapped = self.mapper.resolve(t) if t else t
-        stem = f"{self._stem_wo_token(sub)}.{mapped}" if t else video.stem
-        return video.with_name(f"{stem}{sub.suffix.lower()}")
+        tok = self._rightmost_token(sub)
+        mapped = self.mapper.resolve(tok) if tok else tok
+        stem = f"{self._stem_wo_token(sub)}.{mapped}" if tok else video.stem
+        return video.with_name(stem + sub.suffix.lower())
 
-    def pair_and_normalize(self, subs: Iterable[Path], video: Path) -> None:
+    def process(self, subs: Iterable[Path], video: Path) -> None:
         for sub in subs:
             if not self.pairs_with(sub, video):
                 continue
-
             dst = video.parent / self.normalized_target(sub, video).name
-
             if sub.parent != video.parent:
                 tmp = video.parent / sub.name
                 self.fops.move_file(sub, tmp)
@@ -296,162 +298,92 @@ class BaseProcessor:
         self.fops = fops
         self.subsvc = SubtitleService(mapper, fops)
 
-    @staticmethod
-    def _candidate_items(files: List[Path], dirs: List[Path]) -> List[Path]:
-        return dirs + [f for f in files]
-
-    @staticmethod
-    def _default_is_extra_dir() -> bool:
-        return True
-
-    @staticmethod
-    def _default_is_extra_file(name: str) -> bool:
-        return not has_episode_pattern(name)
-
     def classify_extras(self, items: List[Path]) -> List[bool]:
-        return UI.checkbox_extras(
-            items,
-            [self._default_is_extra_dir() if p.is_dir(
-            ) else self._default_is_extra_file(p.name) for p in items],
-        )
+        defaults = [p.is_dir() or not is_video(p) and not is_audio(p) and not is_subtitle(p)
+                    if p.is_dir() else not has_episode_pattern(p.name)
+                    for p in items]
+        return UI.checkbox_extras(items, defaults)
 
 
 class ShowProcessor(BaseProcessor):
-    def __init__(self, root: Path, mapper: LocaleMapper, fops: FileOps, generate_nfo: bool) -> None:
-        super().__init__(root, mapper, fops)
-        self.generate_nfo = generate_nfo
+    def process_unit(self, unit: Path, season: int) -> None:
+        files, dirs = list_files_and_dirs(unit)
+        items = dirs + files
+        flags = self.classify_extras(items)
 
-    def _find_leaf_units(self, folder: Path) -> List[Path]:
-        files, dirs = list_files_and_dirs(folder)
-        if files:
-            return [folder]
-        units: List[Path] = []
-        for d in dirs:
-            units.extend(self._find_leaf_units(d))
-        return units
+        season_dir = self.root / f"Season {season}"
+        extra_dir = self.root / "EXTRA" / f"Season {season}"
+
+        moved_videos = []
+
+        for item, ex in zip(items, flags):
+            if item.is_dir():
+                if ex:
+                    self.fops.move_dir_atomic(item, extra_dir / item.name)
+                else:
+                    self.fops.move_dir_contents_to(item, season_dir)
+                continue
+
+            if ex:
+                self.fops.move_file(item, extra_dir / item.name)
+                continue
+
+            if is_subtitle(item):
+                continue
+
+            if is_video(item) or is_audio(item):
+                dst = season_dir / item.name
+                self.fops.move_file(item, dst)
+                if is_video(dst):
+                    moved_videos.append(dst)
+                continue
+
+            self.fops.move_file(item, season_dir / item.name)
+
+        for v in sorted(moved_videos, key=natural_sort_key):
+            subs = [p for p in (unit.iterdir() if unit.exists() else [
+            ]) if p.is_file() and is_subtitle(p)]
+            subs += [p for p in (season_dir.iterdir() if season_dir.exists()
+                                 else []) if p.is_file() and is_subtitle(p)]
+            self.subsvc.process(subs, v)
 
     def process(self) -> None:
-        print(f"[SHOW] Processing: {self.root}")
-
-        units = self._find_leaf_units(self.root)
-        if not units:
-            print("[WARN] No files found under this root.")
-            return
-
-        for unit in units:
-            print("\n" + "-" * 60)
-            print(f"[UNIT] {unit}")
-
-            season = UI.ask_season_number(1)
-
-            files, dirs = list_files_and_dirs(unit)
-            items = self._candidate_items(files, dirs)
-            if not items:
-                print("[INFO] No relevant files in this unit; skipping.")
-                continue
-
-            flags = self.classify_extras(items)
-
-            season_dir = self.root / f"Season {season}"
-            extra_season_dir = self.root / "EXTRA" / f"Season {season}"
-
-            moved_videos: List[Path] = []
-
-            for item, is_ex in zip(items, flags):
-                if item.is_dir():
-                    if is_ex:
-                        self.fops.move_dir_atomic(
-                            item, extra_season_dir / item.name)
-                    else:
-                        self.fops.move_dir_contents_to(item, season_dir)
-                    continue
-
-                if is_ex:
-                    self.fops.move_file(item, extra_season_dir / item.name)
-                    continue
-
-                if is_subtitle(item):
-                    continue
-
-                if is_video(item) or is_audio(item):
-                    dst = season_dir / item.name
-                    self.fops.move_file(item, dst)
-                    if is_video(dst):
-                        moved_videos.append(dst)
-                    continue
-
-                self.fops.move_file(item, season_dir / item.name)
-
-            for v in sorted(moved_videos, key=natural_sort_key):
-                subs = []
-                if unit.exists():
-                    subs += [p for p in unit.iterdir() if p.is_file()
-                             and is_subtitle(p)]
-                if season_dir.exists():
-                    subs += [p for p in season_dir.iterdir() if p.is_file()
-                             and is_subtitle(p)]
-                self.subsvc.pair_and_normalize(subs, v)
-
-            if self.generate_nfo:
-                self._generate_nfo_for(season_dir, season)
-
+        leafs = self.find_leafs(self.root)
+        for unit in leafs:
+            log("\n" + "-"*50)
+            log(f"[UNIT] {unit}")
+            season = UI.ask_season()
+            self.process_unit(unit, season)
             self.fops.remove_dir_if_empty(unit)
 
-    def _generate_nfo_for(self, season_dir: Path, season: int) -> None:
-        if not season_dir.exists():
-            print(f"[NFO] Season folder doesn't exist: {season_dir}")
-            return
-
-        videos = sorted([p for p in season_dir.iterdir()
-                        if p.is_file() and is_video(p)], key=natural_sort_key)
-        if not videos:
-            print("[NFO] No videos found.")
-            return
-
-        overrides = UI.ask_nfo_overrides(videos, season)
-
-        for idx, p in enumerate(videos, start=1):
-            ep = overrides.get(idx, idx)
-            nfo = p.with_suffix(".nfo")
-            if nfo.exists():
-                print(f"[SKIP] NFO exists: {nfo.name}")
-                continue
-            print(f"[NFO] Create {nfo.name} (episode={ep}, season={season})")
-            if not self.fops.dry:
-                nfo.write_text(
-                    '<?xml version="1.0" encoding="utf-8" standalone="yes"?>'
-                    '<episodedetails>'
-                    f'<episode>{ep}</episode><season>{season}</season>'
-                    '</episodedetails>',
-                    encoding="utf-8",
-                )
+    def find_leafs(self, root: Path) -> List[Path]:
+        files, dirs = list_files_and_dirs(root)
+        if files:
+            return [root]
+        out = []
+        for d in dirs:
+            out.extend(self.find_leafs(d))
+        return out
 
 
 class MovieProcessor(BaseProcessor):
     def process(self) -> None:
-        print(f"[MOVIE] Processing: {self.root}")
-
         files, dirs = list_files_and_dirs(self.root)
-        items = self._candidate_items(
-            files, [d for d in dirs if d.name != "EXTRA"])
-        if not items:
-            print("[WARN] No relevant files found in movie root.")
-            return
-
+        items = dirs + files
         flags = self.classify_extras(items)
 
         extra_dir = self.root / "EXTRA"
-        moved_videos: List[Path] = []
+        moved_videos = []
 
-        for item, is_ex in zip(items, flags):
+        for item, ex in zip(items, flags):
             if item.is_dir():
-                if is_ex:
+                if ex:
                     self.fops.move_dir_atomic(item, extra_dir / item.name)
                 else:
                     self.fops.move_dir_contents_to(item, self.root)
                 continue
 
-            if is_ex:
+            if ex:
                 self.fops.move_file(item, extra_dir / item.name)
                 continue
 
@@ -470,54 +402,72 @@ class MovieProcessor(BaseProcessor):
         subs = [p for p in self.root.iterdir() if p.is_file()
                 and is_subtitle(p)]
         for v in sorted(moved_videos, key=natural_sort_key):
-            self.subsvc.pair_and_normalize(subs, v)
+            self.subsvc.process(subs, v)
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
-    p = argparse.ArgumentParser(
-        description="Interactive media organizer (per-folder mode).")
-    p.add_argument("roots", nargs="+", type=Path)
-    p.add_argument("--map-csv", type=Path,
-                   help="CSV: source,target,is_case_sensitive")
-    p.add_argument("--map", action="append", default=[],
-                   help="Inline rule 'source,target,case_sensitive'")
-    p.add_argument("--generate-nfo", action="store_true")
-    p.add_argument("--dry-run", action="store_true")
-    a = p.parse_args(argv)
+def PROCESS(root: Path, mapper: LocaleMapper, fops: FileOps, gen_nfo: bool) -> None:
+    files, dirs = list_files_and_dirs(root)
+    has_files = len(files) > 0
 
-    try:
-        mapper = LocaleMapper(load_csv_rules(
-            a.map_csv), parse_cli_rules(a.map))
-    except Exception as e:
-        print(f"[ERROR] Mapping rules: {e}")
-        return 2
+    choice = UI.ask_processing_choice(root, has_files)
 
-    for root in [r.resolve() for r in a.roots]:
-        if not root.exists() or not root.is_dir():
-            print(f"[ERROR] Root not found: {root}")
-            return 2
+    if choice == "skip":
+        log("[SKIP]")
+        return
 
-        fops = FileOps(dry_run=a.dry_run)
+    if has_files:
+        if choice == "show":
+            ShowProcessor(root, mapper, fops).process()
+            return
+        if choice == "movie":
+            MovieProcessor(root, mapper, fops).process()
+            return
+        # 'skip' handled above; no other options when has_files=True
+        return
 
-        print("=" * 72)
-        print(f"[START] Root={root} DryRun={a.dry_run}")
-        if a.map_csv:
-            print(f"[MAP-CSV] {a.map_csv}")
-        for r in a.map:
-            print(f"[MAP-CLI] {r}")
+    # has_files == False
+    if choice == "shows":
+        for d in dirs:
+            PROCESS(root / d.name, mapper, fops, gen_nfo)
+        return
 
-        mode = UI.ask_mode_for(root)
+    if choice == "seasons":
+        sp = ShowProcessor(root, mapper, fops)
+        for d in dirs:
+            unit = root / d.name
+            log(f"\n--- Processing season folder: {unit} ---")
+            season = UI.ask_season()
+            sp.process_unit(unit, season)
+        return
 
-        try:
-            if mode == "show":
-                ShowProcessor(root, mapper, fops, a.generate_nfo).process()
-            else:
-                MovieProcessor(root, mapper, fops).process()
-        except KeyboardInterrupt:
-            print("\n[ABORTED] by user.")
-            return 130
+    if choice == "movies":
+        for d in dirs:
+            unit = root / d.name
+            log(f"\n--- Processing sequel movie folder: {unit} ---")
+            MovieProcessor(unit, mapper, fops).process()
+        return
 
-        print("[DONE]")
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description="Interactive media organizer")
+    parser.add_argument("roots", nargs="+", type=Path)
+    parser.add_argument("--map-csv", type=Path)
+    parser.add_argument("--map", action="append", default=[])
+    parser.add_argument("--generate-nfo", action="store_true")
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args(argv)
+
+    mapper = LocaleMapper(load_csv_rules(args.map_csv),
+                          parse_cli_rules(args.map))
+
+    for root in args.roots:
+        r = root.resolve()
+        if not r.exists() or not r.is_dir():
+            print(f"[ERROR] Not a directory: {r}")
+            continue
+
+        fops = FileOps(args.dry_run)
+        PROCESS(r, mapper, fops, args.generate_nfo)
 
     return 0
 
