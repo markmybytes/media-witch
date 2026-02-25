@@ -10,7 +10,8 @@ import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
+from typing import (Callable, Dict, Iterable, List, Optional, Sequence, Set,
+                    Tuple)
 
 import questionary
 
@@ -89,7 +90,7 @@ def parse_cli_rules(cli_rules: Sequence[str]) -> List[Rule]:
         parts = [x.strip() for x in spec.split(",")]
         if len(parts) != 3:
             raise ValueError(
-                f"Invalid CLI rule: {spec} (expected 'source,target,case_sensitive')")
+                "Mapping rule must be: source,target,case_sensitive")
         out.append(Rule(parts[0], parts[1],
                    parts[2].lower() in ("1", "true", "yes", "y")))
     return out
@@ -102,11 +103,11 @@ def load_csv_rules(csv_path: Optional[Path]) -> List[Rule]:
         raise FileNotFoundError(f"Mapping CSV not found: {csv_path}")
     rules: List[Rule] = []
     with csv_path.open("r", encoding="utf-8") as f:
-        r = csv.DictReader(f)
-        if not r.fieldnames:
+        reader = csv.DictReader(f)
+        if not reader.fieldnames:
             return rules
-        field = {k.lower(): k for k in r.fieldnames}
-        for row in r:
+        field = {k.lower(): k for k in reader.fieldnames}
+        for row in reader:
             src = row[field.get("source", "source")].strip()
             if not src:
                 continue
@@ -169,6 +170,15 @@ class FileOps:
         if not self.dry:
             src.rename(dst)
 
+    def write_text_if_absent(self, path: Path, content: str, label: str = "[WRITE]") -> None:
+        self.ensure_parent(path)
+        if path.exists():
+            log(f"[SKIP] Exists: {path}")
+            return
+        log(f"{label} {path}")
+        if not self.dry:
+            path.write_text(content, encoding="utf-8")
+
     def remove_dir_if_empty(self, dir_path: Path) -> None:
         try:
             next(dir_path.iterdir())
@@ -216,6 +226,33 @@ class FileOps:
             return
         log(f"[MERGE-DIR] {src_dir} -> {dst_dir}")
         self.move_tree_merge(src_dir, dst_dir)
+
+
+class ActionQueue:
+    def __init__(self, fops: FileOps) -> None:
+        self.fops = fops
+        self._q: List[Tuple[Callable, Tuple, Dict, str]] = []
+
+    def add(self, func: Callable, *args, desc: str = "", **kwargs) -> None:
+        self._q.append((func, args, kwargs, desc))
+
+    def commit(self) -> None:
+        if self.fops.dry:
+            if not self._q:
+                log("[DRY-RUN] No actions.")
+                return
+            log("[DRY-RUN] Planned actions:")
+            for _, _, _, desc in self._q:
+                log(desc if desc else "[DRY-RUN] action")
+            return
+        for func, args, kwargs, _ in self._q:
+            func(*args, **kwargs)
+
+    def clear(self) -> None:
+        self._q.clear()
+
+    def __len__(self) -> int:
+        return len(self._q)
 
 
 class UI:
@@ -315,18 +352,23 @@ class SubtitleService:
         stem = f"{self._stem_wo_token(sub)}.{mapped}" if t else video.stem
         return video.with_name(f"{stem}{sub.suffix.lower()}")
 
-    def process(self, subs: Iterable[Path], video: Path) -> None:
+    def plan(self, subs: Iterable[Path], video_dst: Path, aq: ActionQueue) -> None:
         for sub in subs:
-            if not self.pairs_with(sub, video):
+            if not self.pairs_with(sub, video_dst):
                 continue
-            dst = video.parent / self.normalized_target(sub, video).name
-            if sub.parent != video.parent:
-                tmp = video.parent / sub.name
-                self.fops.move_file(sub, tmp)
+            dst = video_dst.parent / \
+                self.normalized_target(sub, video_dst).name
+            if sub.parent != video_dst.parent:
+                tmp = video_dst.parent / sub.name
+                aq.add(self.fops.move_file, sub, tmp,
+                       desc=f"[MOVE] {sub} -> {tmp}")
                 if tmp != dst:
-                    self.fops.rename_file(tmp, dst)
+                    aq.add(self.fops.rename_file, tmp, dst,
+                           desc=f"[RENAME] {tmp.name} -> {dst.name}")
             else:
-                self.fops.rename_file(sub, dst)
+                if sub != dst:
+                    aq.add(self.fops.rename_file, sub, dst,
+                           desc=f"[RENAME] {sub.name} -> {dst.name}")
 
 
 class BaseProcessor:
@@ -364,33 +406,48 @@ class ShowProcessor(BaseProcessor):
         for unit in self.find_leafs(self.root):
             log("\n" + "-" * 50)
             log(f"[UNIT] {unit}")
-            season = UI.ask_season(1)
-            self.process_unit(unit, season)
-            self.fops.remove_dir_if_empty(unit)
+            try:
+                season = UI.ask_season(1)
+                self._stage_and_commit_unit(unit, season)
+            except KeyboardInterrupt:
+                log("[ABORT] No changes committed for this unit.")
+                return
 
     def process_unit(self, unit: Path, season: int) -> None:
+        try:
+            self._stage_and_commit_unit(unit, season)
+        except KeyboardInterrupt:
+            log("[ABORT] No changes committed for this unit.")
+            return
+
+    def _stage_and_commit_unit(self, unit: Path, season: int) -> None:
         files, dirs = list_files_and_dirs(unit)
         items = dirs + files
         if not items:
             return
+
+        aq = ActionQueue(self.fops)
 
         flags = self.classify_extras(items)
 
         season_dir = self.root / f"Season {season}"
         extra_dir = self.root / "EXTRA" / f"Season {season}"
 
-        moved_videos: List[Path] = []
+        moved_video_dsts: List[Path] = []
 
         for item, is_ex in zip(items, flags):
             if item.is_dir():
                 if is_ex:
-                    self.fops.move_dir_atomic(item, extra_dir / item.name)
+                    aq.add(self.fops.move_dir_atomic, item, extra_dir / item.name,
+                           desc=f"[MOVE-DIR] {item} -> {extra_dir / item.name}")
                 else:
-                    self.fops.move_dir_contents_to(item, season_dir)
+                    aq.add(self.fops.move_dir_contents_to, item, season_dir,
+                           desc=f"[FLATTEN->Season] {item} -> {season_dir}")
                 continue
 
             if is_ex:
-                self.fops.move_file(item, extra_dir / item.name)
+                aq.add(self.fops.move_file, item, extra_dir / item.name,
+                       desc=f"[MOVE] {item} -> {extra_dir / item.name}")
                 continue
 
             if is_subtitle(item):
@@ -398,14 +455,16 @@ class ShowProcessor(BaseProcessor):
 
             if is_video(item) or is_audio(item):
                 dst = season_dir / item.name
-                self.fops.move_file(item, dst)
+                aq.add(self.fops.move_file, item, dst,
+                       desc=f"[MOVE] {item} -> {dst}")
                 if is_video(dst):
-                    moved_videos.append(dst)
+                    moved_video_dsts.append(dst)
                 continue
 
-            self.fops.move_file(item, season_dir / item.name)
+            aq.add(self.fops.move_file, item, season_dir / item.name,
+                   desc=f"[MOVE] {item} -> {season_dir / item.name}")
 
-        for v in sorted(moved_videos, key=natural_sort_key):
+        for vdst in sorted(moved_video_dsts, key=natural_sort_key):
             subs = []
             if unit.exists():
                 subs += [p for p in unit.iterdir() if p.is_file()
@@ -413,43 +472,27 @@ class ShowProcessor(BaseProcessor):
             if season_dir.exists():
                 subs += [p for p in season_dir.iterdir() if p.is_file()
                          and is_subtitle(p)]
-            self.subsvc.process(subs, v)
+            self.subsvc.plan(subs, vdst, aq)
 
-        if self.generate_nfo:
-            videos_for_nfo = (
-                moved_videos if self.fops.dry else
-                sorted([p for p in (season_dir.iterdir() if season_dir.exists() else []) if p.is_file() and is_video(p)],
-                       key=natural_sort_key)
-            )
-            self._generate_nfo_for_videos(videos_for_nfo, season)
+        if self.generate_nfo and moved_video_dsts:
+            videos_sorted = sorted(moved_video_dsts, key=natural_sort_key)
+            overrides = UI.ask_nfo_overrides(videos_sorted, season)
+            defaults = {p: i + 1 for i, p in enumerate(videos_sorted)}
+            for idx, p in enumerate(videos_sorted, start=1):
+                ep = overrides.get(idx, defaults[p])
+                nfo_path = p.with_suffix(".nfo")
+                content = (
+                    '<?xml version="1.0" encoding="utf-8" standalone="yes"?>'
+                    '<episodedetails>'
+                    f'<episode>{ep}</episode><season>{season}</season>'
+                    '</episodedetails>'
+                )
+                aq.add(self.fops.write_text_if_absent, nfo_path, content, label="[NFO]",
+                       desc=f"[NFO] Create {nfo_path.name} (episode={ep}, season={season})")
 
-    def _generate_nfo_for_videos(self, videos: List[Path], season: int) -> None:
-        if not videos:
-            log("[NFO] No videos available for NFO generation.")
-            return
+        aq.commit()
 
-        videos_sorted = sorted(videos, key=natural_sort_key)
-        defaults = {p: i + 1 for i, p in enumerate(videos_sorted)}
-
-        overrides = UI.ask_nfo_overrides(videos_sorted, season)
-        for idx, p in enumerate(videos_sorted, start=1):
-            ep = overrides.get(idx, defaults[p])
-            nfo = p.with_suffix(".nfo")
-            if self.fops.dry:
-                log(
-                    f"[DRY-RUN NFO] Would create {nfo.name} (episode={ep}, season={season}) next to {p.name}")
-                continue
-            if nfo.exists():
-                log(f"[SKIP] NFO exists: {nfo.name}")
-                continue
-            log(f"[NFO] Create {nfo.name} (episode={ep}, season={season})")
-            nfo.write_text(
-                '<?xml version="1.0" encoding="utf-8" standalone="yes"?>'
-                '<episodedetails>'
-                f'<episode>{ep}</episode><season>{season}</season>'
-                '</episodedetails>',
-                encoding="utf-8",
-            )
+        self.fops.remove_dir_if_empty(unit)
 
 
 class MovieProcessor(BaseProcessor):
@@ -459,21 +502,26 @@ class MovieProcessor(BaseProcessor):
         if not items:
             return
 
+        aq = ActionQueue(self.fops)
+
         flags = self.classify_extras(items)
 
         extra_dir = self.root / "EXTRA"
-        moved_videos: List[Path] = []
+        moved_video_dsts: List[Path] = []
 
         for item, is_ex in zip(items, flags):
             if item.is_dir():
                 if is_ex:
-                    self.fops.move_dir_atomic(item, extra_dir / item.name)
+                    aq.add(self.fops.move_dir_atomic, item, extra_dir / item.name,
+                           desc=f"[MOVE-DIR] {item} -> {extra_dir / item.name}")
                 else:
-                    self.fops.move_dir_contents_to(item, self.root)
+                    aq.add(self.fops.move_dir_contents_to, item, self.root,
+                           desc=f"[FLATTEN->Root] {item} -> {self.root}")
                 continue
 
             if is_ex:
-                self.fops.move_file(item, extra_dir / item.name)
+                aq.add(self.fops.move_file, item, extra_dir / item.name,
+                       desc=f"[MOVE] {item} -> {extra_dir / item.name}")
                 continue
 
             if is_subtitle(item):
@@ -481,41 +529,53 @@ class MovieProcessor(BaseProcessor):
 
             if is_video(item) or is_audio(item):
                 dst = self.root / item.name
-                self.fops.move_file(item, dst)
+                aq.add(self.fops.move_file, item, dst,
+                       desc=f"[MOVE] {item} -> {dst}")
                 if is_video(dst):
-                    moved_videos.append(dst)
+                    moved_video_dsts.append(dst)
                 continue
 
-            self.fops.move_file(item, self.root / item.name)
+            aq.add(self.fops.move_file, item, self.root / item.name,
+                   desc=f"[MOVE] {item} -> {self.root / item.name}")
 
         subs = [p for p in self.root.iterdir() if p.is_file()
                 and is_subtitle(p)]
-        for v in sorted(moved_videos, key=natural_sort_key):
-            self.subsvc.process(subs, v)
+        for vdst in sorted(moved_video_dsts, key=natural_sort_key):
+            self.subsvc.plan(subs, vdst, aq)
+
+        aq.commit()
 
 
-def walk_and_process(root: Path, mapper: LocaleMapper, fops: FileOps, gen_nfo: bool) -> None:
+def process_directory(root: Path, mapper: LocaleMapper, fops: FileOps, gen_nfo: bool) -> None:
     files, dirs = list_files_and_dirs(root)
     has_files = len(files) > 0
 
-    choice = UI.ask_processing_choice(root, has_files)
+    try:
+        choice = UI.ask_processing_choice(root, has_files)
+    except KeyboardInterrupt:
+        log("[ABORT] No changes committed.")
+        return
 
     if choice == "skip":
         log("[SKIP]")
         return
 
     if has_files:
-        if choice == "show":
-            ShowProcessor(root, mapper, fops, gen_nfo).process()
-            return
-        if choice == "movie":
-            MovieProcessor(root, mapper, fops).process()
+        try:
+            if choice == "show":
+                ShowProcessor(root, mapper, fops, gen_nfo).process()
+                return
+            if choice == "movie":
+                MovieProcessor(root, mapper, fops).process()
+                return
+        except KeyboardInterrupt:
+            log("[ABORT] No changes committed.")
             return
         return
 
     if choice == "shows":
         for d in dirs:
-            walk_and_process(root / d.name, mapper, fops, gen_nfo)
+            process_directory(root / d.name, mapper, fops, gen_nfo)
         return
 
     if choice == "seasons":
@@ -523,21 +583,29 @@ def walk_and_process(root: Path, mapper: LocaleMapper, fops: FileOps, gen_nfo: b
         for d in dirs:
             unit = root / d.name
             log(f"\n--- Processing season folder: {unit} ---")
-            season = UI.ask_season(1)
-            sp.process_unit(unit, season)
+            try:
+                season = UI.ask_season(1)
+                sp.process_unit(unit, season)
+            except KeyboardInterrupt:
+                log("[ABORT] No changes committed for this season folder.")
+                return
         return
 
     if choice == "movies":
         for d in dirs:
             unit = root / d.name
             log(f"\n--- Processing sequel movie folder: {unit} ---")
-            MovieProcessor(unit, mapper, fops).process()
+            try:
+                MovieProcessor(unit, mapper, fops).process()
+            except KeyboardInterrupt:
+                log("[ABORT] No changes committed for this movie folder.")
+                return
         return
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     p = argparse.ArgumentParser(
-        description="Interactive media organizer (questionary-based)")
+        description="Interactive media organizer (questionary-based, staged commits)")
     p.add_argument("roots", nargs="+", type=Path)
     p.add_argument("--map-csv", type=Path,
                    help="CSV: source,target,is_case_sensitive")
@@ -570,9 +638,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             log(f"[MAP-CLI] {r}")
 
         try:
-            walk_and_process(root, mapper, fops, a.generate_nfo)
+            process_directory(root, mapper, fops, a.generate_nfo)
         except KeyboardInterrupt:
-            print("\n[ABORTED] by user.")
+            print("\n[ABORTED] by user. No changes committed.")
             return 130
 
         log("[DONE]")
