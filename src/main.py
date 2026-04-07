@@ -290,9 +290,9 @@ class UI:
             if ans is None:
                 return default
             ans = ans.strip()
-            if ans.isdigit() and int(ans) > 0:
+            if ans.isdigit() and int(ans) > -1:
                 return int(ans)
-            print("Enter positive integer.")
+            print("Enter a non-negative integer.")
 
     @staticmethod
     def checkbox_extras(items: List[Path], defaults: List[bool]) -> List[bool]:
