@@ -316,14 +316,18 @@ class UI:
             return {}
         out: Dict[int, int] = {}
         for idx, p in enumerate(videos, start=1):
-            if questionary.confirm(f"Override {p.name}? (default {defaults[p]})", default=False).ask():
-                while True:
-                    v = questionary.text(
-                        f"Episode number for {p.name}", default=str(defaults[p])).ask()
-                    if v and v.isdigit() and int(v) > 0:
+            while True:
+                v = questionary.text(
+                    f"Episode number for {p.name}", default=str(defaults[p])
+                ).ask()
+                if v is None:
+                    v = str(defaults[p])
+                v = v.strip()
+                if v.isdigit() and int(v) > 0:
+                    if int(v) != defaults[p]:
                         out[idx] = int(v)
-                        break
-                    print("Enter positive integer.")
+                    break
+                print("Enter positive integer.")
         return out
 
 
