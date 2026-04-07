@@ -484,6 +484,7 @@ class ShowProcessor(BaseProcessor):
                 content = (
                     '<?xml version="1.0" encoding="utf-8" standalone="yes"?>'
                     '<episodedetails>'
+                    f'<title>{p.stem}</title>'
                     f'<episode>{ep}</episode><season>{season}</season>'
                     '</episodedetails>'
                 )
