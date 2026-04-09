@@ -257,7 +257,27 @@ class ActionQueue:
 
 class UI:
     @staticmethod
+    def print_tree(path: Path) -> str:
+        """Return directory tree as string."""
+        try:
+            entries = sorted(path.iterdir())
+        except (PermissionError, NotADirectoryError):
+            return ""
+
+        lines = []
+        for i, entry in enumerate(entries):
+            is_last = i == len(entries) - 1
+            prefix = "└── " if is_last else "├── "
+            suffix = "/" if entry.is_dir() else ""
+            lines.append(f"{prefix}{entry.name}{suffix}")
+
+        return "\n".join(lines)
+
+    @staticmethod
     def ask_processing_choice(path: Path, has_files: bool) -> str:
+        print(f"\n📁 Directory structure:")
+        print(UI.print_tree(path) or "Failed to scan the directory.")
+
         if has_files:
             return questionary.select(
                 f"Folder contains files:\n{path}\nSelect how to process:",
