@@ -257,6 +257,13 @@ class ActionQueue:
 
 class UI:
     @staticmethod
+    def _print_section(title: str) -> None:
+        """Print a formatted section header."""
+        print(f"\n{'='*60}")
+        print(f"  {title}")
+        print(f"{'='*60}")
+
+    @staticmethod
     def print_tree(path: Path) -> str:
         """Return directory tree as string."""
         try:
@@ -275,12 +282,17 @@ class UI:
 
     @staticmethod
     def ask_processing_choice(path: Path, has_files: bool) -> str:
-        print(f"\n📁 Directory structure:")
+        print()
+        print("=" * 60)
+        print("📂 PROCESSING FOLDER")
+        print(f"   Current: {path.name}")
+        print("=" * 60)
         print(UI.print_tree(path) or "Failed to scan the directory.")
+        print()
 
         if has_files:
             return questionary.select(
-                f"Folder contains files:\n{path}\nSelect how to process:",
+                "Select how to process this folder:",
                 choices=[
                     questionary.Choice("TV Show", "show"),
                     questionary.Choice("Movie", "movie"),
@@ -289,8 +301,9 @@ class UI:
                 default="skip",
             ).ask() or "skip"
         else:
+            print("No files found. This folder likely contains subdirectories.\n")
             return questionary.select(
-                f"No files in folder:\n{path}\nWhat does this folder represent?",
+                "What does this folder represent?",
                 choices=[
                     questionary.Choice("Skip this folder", "skip"),
                     questionary.Choice("Contains multiple SHOWS", "shows"),
@@ -329,16 +342,25 @@ class UI:
     @staticmethod
     def ask_nfo_overrides(videos: List[Path], season: int) -> Dict[int, int]:
         defaults = {p: i + 1 for i, p in enumerate(videos)}
-        print("\nDefault episode numbers:")
-        for p in videos:
-            print(f"  {p.name} -> {defaults[p]}")
-        if not (questionary.confirm("Override any?", default=False).ask() or False):
+        print("\n" + "─" * 60)
+        print("📺 DEFAULT EPISODE NUMBERING:")
+        print("─" * 60)
+        for i, p in enumerate(videos, start=1):
+            print(f"  {i:2d}. {p.name:40s} → Episode {defaults[p]}")
+        print()
+
+        if not (questionary.confirm("Override any episode numbers?", default=False).ask() or False):
             return {}
+
+        print("\n" + "─" * 60)
+        print("✏️  EPISODE NUMBER OVERRIDES:")
+        print("─" * 60)
         out: Dict[int, int] = {}
         for idx, p in enumerate(videos, start=1):
             while True:
                 v = questionary.text(
-                    f"Episode number for {p.name}", default=str(defaults[p])
+                    f"[{idx}/{len(videos)}] {p.name}",
+                    default=str(defaults[p])
                 ).ask()
                 if v is None:
                     v = str(defaults[p])
@@ -347,7 +369,7 @@ class UI:
                     if int(v) != defaults[p]:
                         out[idx] = int(v)
                     break
-                print("Enter positive integer.")
+                print("  ⚠️  Enter positive integer.")
         return out
 
 
@@ -428,8 +450,10 @@ class ShowProcessor(BaseProcessor):
 
     def process(self) -> None:
         for unit in self.find_leafs(self.root):
-            log("\n" + "-" * 50)
+            print()
+            log("─" * 60)
             log(f"[UNIT] {unit}")
+            log("─" * 60)
             try:
                 season = UI.ask_season(1)
                 self._stage_and_commit_unit(unit, season)
@@ -607,7 +631,10 @@ def process_directory(root: Path, mapper: LocaleMapper, fops: FileOps, gen_nfo: 
         sp = ShowProcessor(root, mapper, fops, gen_nfo)
         for d in dirs:
             unit = root / d.name
-            log(f"\n--- Processing season folder: {unit} ---")
+            print()
+            log("─" * 60)
+            log(f"[SEASON] {unit}")
+            log("─" * 60)
             try:
                 season = UI.ask_season(1)
                 sp.process_unit(unit, season)
@@ -619,7 +646,10 @@ def process_directory(root: Path, mapper: LocaleMapper, fops: FileOps, gen_nfo: 
     if choice == "movies":
         for d in dirs:
             unit = root / d.name
-            log(f"\n--- Processing sequel movie folder: {unit} ---")
+            print()
+            log("─" * 60)
+            log(f"[MOVIE] {unit}")
+            log("─" * 60)
             try:
                 MovieProcessor(unit, mapper, fops).process()
             except KeyboardInterrupt:
