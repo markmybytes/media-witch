@@ -85,8 +85,10 @@ def parse_cli_rules(cli_rules: Sequence[str]) -> List[Rule]:
     for spec in cli_rules:
         parts = [x.strip() for x in spec.split(",")]
         if len(parts) != 3:
-            raise ValueError("Mapping rule must be: source,target,case_sensitive")
-        rules.append(Rule(parts[0], parts[1], parts[2].lower() in ("1", "true", "yes", "y")))
+            raise ValueError(
+                "Mapping rule must be: source,target,case_sensitive")
+        rules.append(
+            Rule(parts[0], parts[1], parts[2].lower() in ("1", "true", "yes", "y")))
     return rules
 
 
@@ -106,8 +108,10 @@ def load_csv_rules(csv_path: Optional[Path]) -> List[Rule]:
             if not src:
                 continue
             tgt = row[field.get("target", "target")].strip()
-            cs = row[field.get("is_case_sensitive", "is_case_sensitive")].strip()
-            rules.append(Rule(src, tgt, cs.lower() in ("1", "true", "yes", "y")))
+            cs = row[field.get("is_case_sensitive",
+                               "is_case_sensitive")].strip()
+            rules.append(Rule(src, tgt, cs.lower()
+                         in ("1", "true", "yes", "y")))
     return rules
 
 
@@ -319,7 +323,8 @@ class UI:
                 title=f"{p.name} [{'EXTRA' if d else 'PRIMARY'}]", value=i, checked=d)
             for i, (p, d) in enumerate(zip(items, defaults))
         ]
-        selected = set(questionary.checkbox("Select EXTRAS", choices=choices).ask() or [])
+        selected = set(questionary.checkbox(
+            "Select EXTRAS", choices=choices).ask() or [])
         return [i in selected for i in range(len(items))]
 
     @staticmethod
@@ -408,7 +413,8 @@ class BaseProcessor:
         self.subsvc = SubtitleService(mapper, fops)
 
     def classify_extras(self, items: List[Path]) -> List[bool]:
-        defaults = [p.is_dir() or not has_episode_pattern(p.name) for p in items]
+        defaults = [p.is_dir() or not has_episode_pattern(p.name)
+                    for p in items]
         return UI.checkbox_extras(items, defaults)
 
 
@@ -491,8 +497,10 @@ class ShowProcessor(BaseProcessor):
                    desc=f"[MOVE] {item} -> {season_dir / item.name}")
 
         for vdst in sorted(moved_video_dsts, key=natural_sort_key):
-            subs = [p for p in (list(unit.iterdir()) if unit.exists() else []) if p.is_file() and is_subtitle(p)]
-            subs += [p for p in (list(season_dir.iterdir()) if season_dir.exists() else []) if p.is_file() and is_subtitle(p)]
+            subs = [p for p in (list(unit.iterdir()) if unit.exists() else [
+            ]) if p.is_file() and is_subtitle(p)]
+            subs += [p for p in (list(season_dir.iterdir()) if season_dir.exists()
+                                 else []) if p.is_file() and is_subtitle(p)]
             self.subsvc.plan(subs, vdst, aq)
 
         if self.generate_nfo and moved_video_dsts:
@@ -634,14 +642,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="Interactive media organizer (questionary-based, staged commits)")
     parser.add_argument("roots", nargs="+", type=Path)
-    parser.add_argument("--map-csv", type=Path, help="CSV: source,target,is_case_sensitive")
-    parser.add_argument("--map", action="append", default=[], help="Inline rule 'source,target,case_sensitive'")
-    parser.add_argument("--generate-nfo", action="store_true", help="Generate .nfo per episode (TV mode only).")
+    parser.add_argument("--map-csv", type=Path,
+                        help="CSV: source,target,is_case_sensitive")
+    parser.add_argument("--map", action="append", default=[],
+                        help="Inline rule 'source,target,case_sensitive'")
+    parser.add_argument("--generate-nfo", action="store_true",
+                        help="Generate .nfo per episode (TV mode only).")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
 
     try:
-        mapper = LocaleMapper(load_csv_rules(args.map_csv), parse_cli_rules(args.map))
+        mapper = LocaleMapper(load_csv_rules(
+            args.map_csv), parse_cli_rules(args.map))
     except Exception as e:
         print(f"[ERROR] Mapping rules: {e}")
         return 2
