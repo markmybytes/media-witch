@@ -1,9 +1,21 @@
 #!/usr/bin/env python3
 """
-Torrent Fake File Creator - Process ALL .torrent files
-- Input: a folder path or single .torrent file
-- Creates empty fake files (0 bytes) matching torrent structure
-- Output folder created in specified directory (default: current directory)
+⚠️  DEPRECATED - This module is no longer maintained.
+
+This file has been superseded by the refactored media-witch package (v2.0.0+).
+
+Please use the new CLI instead:
+  pip install -e .
+  media-witch torrent ./torrents/*.torrent --output-dir ./output
+
+For programmatic use, import from the modular package:
+  from media_witch.features.torrent.api import create_from_torrent, TorrentConfig
+  from pathlib import Path
+
+  config = TorrentConfig(output_dir=Path("./output"))
+  result = create_from_torrent(Path("file.torrent"), config)
+
+This file will be removed in v2.1.0.
 """
 
 import argparse

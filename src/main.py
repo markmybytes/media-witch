@@ -1,5 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+⚠️  DEPRECATED - This module is no longer maintained.
+
+This file has been superseded by the refactored media-witch package (v2.0.0+).
+
+Please use the new CLI instead:
+  pip install -e .
+  media-witch organize ./path --mode auto-tv --batch-season 1
+  media-witch nfo ./videos --season 1
+  media-witch subtitles ./path --map "chi,zh,false"
+
+For programmatic use, import from the modular package:
+  from media_witch.features.organize.api import organize_directory
+  from media_witch.features.nfo.api import generate_episode_nfos
+  from media_witch.features.subtitles.api import rename_subtitles
+
+This file will be removed in v2.1.0.
+"""
 
 from __future__ import annotations
 
