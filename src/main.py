@@ -51,12 +51,8 @@ def log(msg: str) -> None:
 
 
 def list_files_and_dirs(path: Path) -> Tuple[List[Path], List[Path]]:
-    files, dirs = [], []
-    for e in path.iterdir():
-        if e.is_file():
-            files.append(e)
-        elif e.is_dir():
-            dirs.append(e)
+    files = [e for e in path.iterdir() if e.is_file()]
+    dirs = [e for e in path.iterdir() if e.is_dir()]
     return files, dirs
 
 
@@ -85,23 +81,21 @@ class LocaleMapper:
 
 
 def parse_cli_rules(cli_rules: Sequence[str]) -> List[Rule]:
-    out: List[Rule] = []
+    rules = []
     for spec in cli_rules:
         parts = [x.strip() for x in spec.split(",")]
         if len(parts) != 3:
-            raise ValueError(
-                "Mapping rule must be: source,target,case_sensitive")
-        out.append(Rule(parts[0], parts[1],
-                   parts[2].lower() in ("1", "true", "yes", "y")))
-    return out
+            raise ValueError("Mapping rule must be: source,target,case_sensitive")
+        rules.append(Rule(parts[0], parts[1], parts[2].lower() in ("1", "true", "yes", "y")))
+    return rules
 
 
 def load_csv_rules(csv_path: Optional[Path]) -> List[Rule]:
-    if not csv_path:
+    if not csv_path or not csv_path.exists():
         return []
     if not csv_path.exists():
         raise FileNotFoundError(f"Mapping CSV not found: {csv_path}")
-    rules: List[Rule] = []
+    rules = []
     with csv_path.open("r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         if not reader.fieldnames:
@@ -112,10 +106,8 @@ def load_csv_rules(csv_path: Optional[Path]) -> List[Rule]:
             if not src:
                 continue
             tgt = row[field.get("target", "target")].strip()
-            cs = row[field.get("is_case_sensitive",
-                               "is_case_sensitive")].strip()
-            rules.append(Rule(src, tgt, cs.lower()
-                         in ("1", "true", "yes", "y")))
+            cs = row[field.get("is_case_sensitive", "is_case_sensitive")].strip()
+            rules.append(Rule(src, tgt, cs.lower() in ("1", "true", "yes", "y")))
     return rules
 
 
@@ -258,26 +250,19 @@ class ActionQueue:
 class UI:
     @staticmethod
     def _print_section(title: str) -> None:
-        """Print a formatted section header."""
         print(f"\n{'='*60}")
         print(f"  {title}")
         print(f"{'='*60}")
 
     @staticmethod
     def print_tree(path: Path) -> str:
-        """Return directory tree as string."""
         try:
             entries = sorted(path.iterdir())
         except (PermissionError, NotADirectoryError):
             return ""
 
-        lines = []
-        for i, entry in enumerate(entries):
-            is_last = i == len(entries) - 1
-            prefix = "└── " if is_last else "├── "
-            suffix = "/" if entry.is_dir() else ""
-            lines.append(f"{prefix}{entry.name}{suffix}")
-
+        lines = [f"{'└── ' if i == len(entries) - 1 else '├── '}{entry.name}{'/' if entry.is_dir() else ''}"
+                 for i, entry in enumerate(entries)]
         return "\n".join(lines)
 
     @staticmethod
@@ -334,10 +319,8 @@ class UI:
                 title=f"{p.name} [{'EXTRA' if d else 'PRIMARY'}]", value=i, checked=d)
             for i, (p, d) in enumerate(zip(items, defaults))
         ]
-        selected = questionary.checkbox(
-            "Select EXTRAS", choices=choices).ask() or []
-        selected_set = set(selected)
-        return [(i in selected_set) for i in range(len(items))]
+        selected = set(questionary.checkbox("Select EXTRAS", choices=choices).ask() or [])
+        return [i in selected for i in range(len(items))]
 
     @staticmethod
     def ask_nfo_overrides(videos: List[Path], season: int) -> Dict[int, int]:
@@ -425,12 +408,7 @@ class BaseProcessor:
         self.subsvc = SubtitleService(mapper, fops)
 
     def classify_extras(self, items: List[Path]) -> List[bool]:
-        defaults: List[bool] = []
-        for p in items:
-            if p.is_dir():
-                defaults.append(True)
-            else:
-                defaults.append(not has_episode_pattern(p.name))
+        defaults = [p.is_dir() or not has_episode_pattern(p.name) for p in items]
         return UI.checkbox_extras(items, defaults)
 
 
@@ -443,10 +421,10 @@ class ShowProcessor(BaseProcessor):
         files, dirs = list_files_and_dirs(folder)
         if files:
             return [folder]
-        out: List[Path] = []
+        leafs = []
         for d in dirs:
-            out.extend(self.find_leafs(d))
-        return out
+            leafs.extend(self.find_leafs(d))
+        return leafs
 
     def process(self) -> None:
         for unit in self.find_leafs(self.root):
@@ -513,13 +491,8 @@ class ShowProcessor(BaseProcessor):
                    desc=f"[MOVE] {item} -> {season_dir / item.name}")
 
         for vdst in sorted(moved_video_dsts, key=natural_sort_key):
-            subs = []
-            if unit.exists():
-                subs += [p for p in unit.iterdir() if p.is_file()
-                         and is_subtitle(p)]
-            if season_dir.exists():
-                subs += [p for p in season_dir.iterdir() if p.is_file()
-                         and is_subtitle(p)]
+            subs = [p for p in (list(unit.iterdir()) if unit.exists() else []) if p.is_file() and is_subtitle(p)]
+            subs += [p for p in (list(season_dir.iterdir()) if season_dir.exists() else []) if p.is_file() and is_subtitle(p)]
             self.subsvc.plan(subs, vdst, aq)
 
         if self.generate_nfo and moved_video_dsts:
@@ -597,10 +570,9 @@ class MovieProcessor(BaseProcessor):
 
 def process_directory(root: Path, mapper: LocaleMapper, fops: FileOps, gen_nfo: bool) -> None:
     files, dirs = list_files_and_dirs(root)
-    has_files = len(files) > 0
 
     try:
-        choice = UI.ask_processing_choice(root, has_files)
+        choice = UI.ask_processing_choice(root, bool(files))
     except KeyboardInterrupt:
         log("[ABORT] No changes committed.")
         return
@@ -609,7 +581,7 @@ def process_directory(root: Path, mapper: LocaleMapper, fops: FileOps, gen_nfo: 
         log("[SKIP]")
         return
 
-    if has_files:
+    if files:
         try:
             if choice == "show":
                 ShowProcessor(root, mapper, fops, gen_nfo).process()
@@ -659,41 +631,37 @@ def process_directory(root: Path, mapper: LocaleMapper, fops: FileOps, gen_nfo: 
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    p = argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
         description="Interactive media organizer (questionary-based, staged commits)")
-    p.add_argument("roots", nargs="+", type=Path)
-    p.add_argument("--map-csv", type=Path,
-                   help="CSV: source,target,is_case_sensitive")
-    p.add_argument("--map", action="append", default=[],
-                   help="Inline rule 'source,target,case_sensitive'")
-    p.add_argument("--generate-nfo", action="store_true",
-                   help="Generate .nfo per episode (TV mode only).")
-    p.add_argument("--dry-run", action="store_true")
-    a = p.parse_args(argv)
+    parser.add_argument("roots", nargs="+", type=Path)
+    parser.add_argument("--map-csv", type=Path, help="CSV: source,target,is_case_sensitive")
+    parser.add_argument("--map", action="append", default=[], help="Inline rule 'source,target,case_sensitive'")
+    parser.add_argument("--generate-nfo", action="store_true", help="Generate .nfo per episode (TV mode only).")
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args(argv)
 
     try:
-        mapper = LocaleMapper(load_csv_rules(
-            a.map_csv), parse_cli_rules(a.map))
+        mapper = LocaleMapper(load_csv_rules(args.map_csv), parse_cli_rules(args.map))
     except Exception as e:
         print(f"[ERROR] Mapping rules: {e}")
         return 2
 
-    for root in [r.resolve() for r in a.roots]:
+    for root in [r.resolve() for r in args.roots]:
         if not root.exists() or not root.is_dir():
             print(f"[ERROR] Not a directory: {root}")
             continue
 
-        fops = FileOps(dry_run=a.dry_run)
+        fops = FileOps(dry_run=args.dry_run)
 
         log("=" * 72)
-        log(f"[START] Root={root} DryRun={a.dry_run}")
-        if a.map_csv:
-            log(f"[MAP-CSV] {a.map_csv}")
-        for r in a.map:
+        log(f"[START] Root={root} DryRun={args.dry_run}")
+        if args.map_csv:
+            log(f"[MAP-CSV] {args.map_csv}")
+        for r in args.map:
             log(f"[MAP-CLI] {r}")
 
         try:
-            process_directory(root, mapper, fops, a.generate_nfo)
+            process_directory(root, mapper, fops, args.generate_nfo)
         except KeyboardInterrupt:
             print("\n[ABORTED] by user. No changes committed.")
             return 130
