@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -25,12 +26,16 @@ class OrganizeConfig:
         locale_mapper: Optional LocaleMapper for subtitle renaming
         generate_nfo: Whether to generate NFO files (TV only)
         dry_run: If True, preview changes without executing
+        extras_classifier: Optional callback for classifying extras interactively
+        nfo_override_callback: Optional callback for NFO episode number overrides
     """
     mode: Literal["show", "movie", "skip"]
     season: int | None = None
     locale_mapper: LocaleMapper | None = None
     generate_nfo: bool = False
     dry_run: bool = False
+    extras_classifier: Callable[[list[Path], list[bool]], list[bool]] | None = None
+    nfo_override_callback: Callable[[list[Path], int], dict[int, int]] | None = None
 
 
 @dataclass
@@ -90,8 +95,12 @@ def organize_tv_show(
     errors = []
     skipped = []
 
-    # Classify extras automatically
-    flags = classify_extras_auto(items)
+    # Classify extras (interactive or automatic)
+    if config.extras_classifier:
+        defaults = classify_extras_auto(items)
+        flags = config.extras_classifier(items, defaults)
+    else:
+        flags = classify_extras_auto(items)
 
     season_dir = path / f"Season {season}"
     extra_dir = path / "EXTRA" / f"Season {season}"
@@ -154,8 +163,18 @@ def organize_tv_show(
     # Generate NFOs
     if config.generate_nfo and moved_video_dsts:
         videos_sorted = sorted(moved_video_dsts, key=natural_sort_key)
+
+        # Get episode overrides if callback provided
+        episode_overrides = {}
+        if config.nfo_override_callback:
+            episode_overrides = config.nfo_override_callback(videos_sorted, season)
+
         nfo_config = NFOConfig(
-            season=season, episode_start=1, dry_run=config.dry_run)
+            season=season,
+            episode_start=1,
+            episode_overrides=episode_overrides,
+            dry_run=config.dry_run
+        )
         nfo_result = generate_episode_nfos(videos_sorted, nfo_config)
         nfos_created.extend(nfo_result.created)
         errors.extend(nfo_result.errors)
@@ -196,8 +215,12 @@ def organize_movie(
     errors = []
     skipped = []
 
-    # Classify extras automatically
-    flags = classify_extras_auto(items)
+    # Classify extras (interactive or automatic)
+    if config.extras_classifier:
+        defaults = classify_extras_auto(items)
+        flags = config.extras_classifier(items, defaults)
+    else:
+        flags = classify_extras_auto(items)
 
     extra_dir = path / "EXTRA"
     moved_video_dsts: list[Path] = []
