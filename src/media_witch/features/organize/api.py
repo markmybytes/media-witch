@@ -28,6 +28,8 @@ class OrganizeConfig:
         dry_run: If True, preview changes without executing
         extras_classifier: Optional callback for classifying extras interactively
         nfo_override_callback: Optional callback for NFO episode number overrides
+        root_dir: Root directory for creating Season folders (for batch processing)
+                 If set, Season folders are created at root_dir instead of path
     """
     mode: Literal["show", "movie", "skip"]
     season: int | None = None
@@ -36,6 +38,7 @@ class OrganizeConfig:
     dry_run: bool = False
     extras_classifier: Callable[[list[Path], list[bool]], list[bool]] | None = None
     nfo_override_callback: Callable[[list[Path], int], dict[int, int]] | None = None
+    root_dir: Path | None = None
 
 
 @dataclass
@@ -75,7 +78,7 @@ def organize_tv_show(
     """Organize files as TV show episodes.
 
     Args:
-        path: Directory to organize
+        path: Directory to organize (source of files)
         season: Season number
         config: Organization configuration
         fops: FileOps instance
@@ -83,8 +86,7 @@ def organize_tv_show(
     Returns:
         Result object with operation details
     """
-    files, dirs = list_files_and_dirs(path
-                                      )
+    files, dirs = list_files_and_dirs(path)
     items = dirs + files
     if not items:
         return OrganizeResult([], [], [], [])
@@ -102,8 +104,10 @@ def organize_tv_show(
     else:
         flags = classify_extras_auto(items)
 
-    season_dir = path / f"Season {season}"
-    extra_dir = path / "EXTRA" / f"Season {season}"
+    # Use root_dir if provided (for batch season processing), otherwise use path
+    output_root = config.root_dir if config.root_dir else path
+    season_dir = output_root / f"Season {season}"
+    extra_dir = output_root / "EXTRA" / f"Season {season}"
 
     moved_video_dsts: list[Path] = []
 

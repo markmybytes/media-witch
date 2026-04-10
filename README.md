@@ -32,18 +32,21 @@ pip install -e ".[dev]"
 
 ## Quick Start
 
-### Organize TV Shows (Interactive)
+### Organize Media Files (Interactive)
 ```bash
-media-witch organize ./Downloads/MyShow/ --mode interactive
-# Prompts:
-# - TV Show or Movie?
-# - Season number?
-# - Which files are extras?
+media-witch organize ./Downloads/MyShow/
+# Interactive prompts guide you through:
+# - TV Show, Movie, or Skip?
+# - Season number (for TV shows)
+# - Which files are extras? (checkbox selection)
+# - NFO files generated automatically
+# - Episode number overrides (optional)
 ```
 
-### Organize Movies (Automatic)
+### Organize Multiple Shows
 ```bash
-media-witch organize ./Downloads/ --mode auto-movie --dry-run
+media-witch organize ./Downloads/TV-Shows/
+# Detects multiple shows and processes each interactively
 ```
 
 ### Generate NFO Files
@@ -71,19 +74,25 @@ media-witch torrent ./torrents/*.torrent --output-dir ./structures
 ## CLI Commands
 
 ### organize
+Organize media files into TV show or movie structure with interactive prompts.
+
 ```bash
 media-witch organize [OPTIONS] PATHS...
 
 Options:
-  --mode [interactive|auto-tv|auto-movie]  Organization mode (default: interactive)
-  --generate-nfo / --no-nfo                Generate episode NFO files (TV only)
-  --batch-season INTEGER                   Season number for auto-tv mode
   --map-csv PATH                           CSV file with subtitle locale mappings
   --map TEXT                               Inline locale mapping rule (repeatable)
   --dry-run / --no-dry-run                 Preview changes without executing
-  -v, --verbose                            Enable verbose output
   -q, --quiet                              Suppress non-essential output
 ```
+
+**Features:**
+- **Interactive prompts** for TV/Movie classification
+- **Automatic leaf-finding** for complex directory structures
+- **NFO generation** enabled by default for TV shows
+- **Extras classification** via checkbox selection
+- **Episode number overrides** when needed
+- **Batch processing** for multiple shows/seasons/movies
 
 ### nfo
 ```bash

@@ -12,7 +12,43 @@ from ..features.subtitles.locale import (LocaleMapper, load_csv_rules,
                                          parse_cli_rules)
 from ..ui.prompts import (ask_extras_classification, ask_nfo_overrides,
                           ask_processing_choice, ask_season, ask_yes_no)
-from .common import common_options, locale_csv_option, locale_map_option
+from .common import locale_csv_option, locale_map_option, dry_run_option, quiet_option
+
+
+def _find_leaf_directories(path: Path) -> list[Path]:
+    """Recursively find directories that contain files (leaf directories).
+
+    Args:
+        path: Directory to search
+
+    Returns:
+        List of leaf directories (directories containing files)
+    """
+    files, dirs = list_files_and_dirs(path)
+    if files:
+        return [path]
+
+    leafs = []
+    for subdir in dirs:
+        leafs.extend(_find_leaf_directories(subdir))
+    return leafs
+
+
+def _make_nfo_callback(season: int) -> callable:
+    """Create NFO callback that asks for generation first.
+
+    Args:
+        season: Season number for context
+
+    Returns:
+        Callback that asks about NFO generation then episode overrides if yes
+    """
+    def nfo_callback(videos: list[Path]) -> dict[int, int]:
+        generate_nfo = ask_yes_no("Generate NFO files?", default=True)
+        if not generate_nfo:
+            return {}
+        return ask_nfo_overrides(videos, season)
+    return nfo_callback
 
 
 def _process_interactive(
@@ -37,44 +73,62 @@ def _process_interactive(
 
     if choice == "skip":
         if not quiet:
-            click.echo(f"Skipped: {path}")
+            click.echo(f"⏭️  Skipped: {path}")
         return
 
-    # Handle batch processing modes (subdirectories)
+    # If directory has files, process based on choice
+    if has_files:
+        if choice == "show":
+            # Find all leaf directories and process each as a season
+            leafs = _find_leaf_directories(path)
+            for leaf in leafs:
+                if not quiet:
+                    click.echo(f"\n{'─' * 60}")
+                    click.echo(f"📂 [UNIT] {leaf}")
+                    click.echo(f"{'─' * 60}")
+                season = ask_season(default=1)
+                # Always enable NFO generation, but callback will ask user
+                _process_single_dir(
+                    leaf, "show", season, mapper, True, dry_run, quiet
+                )
+            return
+        elif choice == "movie":
+            _process_single_dir(
+                path, "movie", None, mapper, False, dry_run, quiet
+            )
+            return
+
+    # Handle batch processing modes (no files in current directory)
     if choice == "shows":
         # Process each subdir as a separate show
         for subdir in dirs:
             _process_interactive(subdir, mapper, dry_run, quiet)
         return
     elif choice == "seasons":
-        # Process each subdir as a season
-        generate_nfo = ask_yes_no("Generate NFO files for all seasons?", default=False)
-        for season_num, subdir in enumerate(sorted(dirs), start=1):
+        # Process each subdir as a season (ask for season number per subdir)
+        # Files in each season subdir will be moved to parent's Season folders
+        for subdir in sorted(dirs):
             if not quiet:
-                click.echo(f"\nProcessing Season {season_num}: {subdir.name}")
-            _process_single_dir(
-                subdir, "show", season_num, mapper, generate_nfo, dry_run, quiet
+                click.echo(f"\n{'─' * 60}")
+                click.echo(f"📺 [SEASON] {subdir}")
+                click.echo(f"{'─' * 60}")
+            season = ask_season(default=1)
+            # Always enable NFO generation, but callback will ask user
+            _process_single_dir_batch(
+                subdir, "show", season, path, mapper, True, dry_run, quiet
             )
         return
     elif choice == "movies":
         # Process each subdir as a movie
         for subdir in dirs:
+            if not quiet:
+                click.echo(f"\n{'─' * 60}")
+                click.echo(f"🎬 [MOVIE] {subdir}")
+                click.echo(f"{'─' * 60}")
             _process_single_dir(
                 subdir, "movie", None, mapper, False, dry_run, quiet
             )
         return
-
-    # Handle single directory modes
-    if choice == "show":
-        season = ask_season(default=1)
-        generate_nfo = ask_yes_no("Generate NFO files?", default=False)
-        _process_single_dir(
-            path, "show", season, mapper, generate_nfo, dry_run, quiet
-        )
-    elif choice == "movie":
-        _process_single_dir(
-            path, "movie", None, mapper, False, dry_run, quiet
-        )
 
 
 def _process_single_dir(
@@ -97,6 +151,61 @@ def _process_single_dir(
         dry_run: Preview mode
         quiet: Suppress output
     """
+    _process_single_dir_impl(path, mode, season, mapper, generate_nfo, dry_run, quiet, None)
+
+
+def _process_single_dir_batch(
+    path: Path,
+    mode: str,
+    season: int | None,
+    root_dir: Path,
+    mapper: LocaleMapper,
+    generate_nfo: bool,
+    dry_run: bool,
+    quiet: bool,
+) -> None:
+    """Process a single directory in batch mode with output at root_dir level.
+
+    Args:
+        path: Directory to process (source of files)
+        mode: 'show' or 'movie'
+        season: Season number (for shows)
+        root_dir: Root directory where Season folders are created
+        mapper: Locale mapper
+        generate_nfo: Whether to generate NFO files
+        dry_run: Preview mode
+        quiet: Suppress output
+    """
+    _process_single_dir_impl(path, mode, season, mapper, generate_nfo, dry_run, quiet, root_dir)
+
+
+def _process_single_dir_impl(
+    path: Path,
+    mode: str,
+    season: int | None,
+    mapper: LocaleMapper,
+    generate_nfo: bool,
+    dry_run: bool,
+    quiet: bool,
+    root_dir: Path | None,
+) -> None:
+    """Internal implementation for processing a directory.
+
+    Args:
+        path: Directory to process
+        mode: 'show' or 'movie'
+        season: Season number (for shows)
+        mapper: Locale mapper
+        generate_nfo: Whether to generate NFO files
+        dry_run: Preview mode
+        quiet: Suppress output
+        root_dir: Root directory for Season output (batch mode). If None, uses path.
+    """
+    # Create NFO callback that asks user about generation
+    nfo_callback = None
+    if generate_nfo and mode == "show" and season is not None:
+        nfo_callback = _make_nfo_callback(season)
+
     # Create config with interactive callbacks
     config = OrganizeConfig(
         mode=mode,  # type: ignore
@@ -105,7 +214,8 @@ def _process_single_dir(
         generate_nfo=generate_nfo,
         dry_run=dry_run,
         extras_classifier=ask_extras_classification,
-        nfo_override_callback=ask_nfo_overrides if generate_nfo else None,
+        nfo_override_callback=nfo_callback,
+        root_dir=root_dir,
     )
 
     try:
@@ -126,81 +236,36 @@ def _process_single_dir(
 
 @click.command(name="organize")
 @click.argument("paths", nargs=-1, type=click.Path(exists=True), required=True)
-@click.option(
-    "--mode",
-    type=click.Choice(["interactive", "auto-tv", "auto-movie"]),
-    default="interactive",
-    help="Organization mode",
-)
-@click.option(
-    "--generate-nfo/--no-nfo",
-    default=False,
-    help="Generate NFO files for TV episodes",
-)
-@click.option(
-    "--batch-season",
-    type=int,
-    help="Season number for non-interactive TV mode",
-)
 @locale_csv_option
 @locale_map_option
-@common_options
+@dry_run_option
+@quiet_option
 def organize_command(
     paths: tuple[str, ...],
-    mode: str,
-    generate_nfo: bool,
-    batch_season: int | None,
     map_csv: str | None,
     locale_maps: tuple[str, ...],
     dry_run: bool,
-    verbose: bool,
     quiet: bool,
 ) -> None:
-    """Organize media files into TV show or movie structure."""
-    # Set up locale mapper
-    csv_rules = load_csv_rules(Path(map_csv) if map_csv else None)
-    cli_rules = parse_cli_rules(list(locale_maps))
-    mapper = LocaleMapper(csv_rules=csv_rules, cli_rules=cli_rules)
+    """Organize media files into TV show or movie structure (interactive mode).
 
-    # Process each path
-    for path_str in paths:
-        path = Path(path_str)
+    This command walks you through organizing your media files with prompts for:
+    - TV show vs movie classification
+    - Season numbers for TV shows
+    - Extras classification
+    - NFO file generation (always enabled)
+    - Episode number overrides
+    """
+    try:
+        # Set up locale mapper
+        csv_rules = load_csv_rules(Path(map_csv) if map_csv else None)
+        cli_rules = parse_cli_rules(list(locale_maps))
+        mapper = LocaleMapper(csv_rules=csv_rules, cli_rules=cli_rules)
 
-        if mode == "interactive":
+        # Process each path in interactive mode
+        for path_str in paths:
+            path = Path(path_str)
             _process_interactive(path, mapper, dry_run, quiet)
-            continue
-
-        # Auto modes
-        if mode == "auto-tv":
-            season = batch_season or 1
-            config = OrganizeConfig(
-                mode="show",
-                season=season,
-                locale_mapper=mapper,
-                generate_nfo=generate_nfo,
-                dry_run=dry_run,
-            )
-        elif mode == "auto-movie":
-            config = OrganizeConfig(
-                mode="movie",
-                locale_mapper=mapper,
-                dry_run=dry_run,
-            )
-        else:
-            config = OrganizeConfig(mode="skip", dry_run=dry_run)
-
-        try:
-            result = organize_directory(path, config)
-
-            if not quiet:
-                if dry_run:
-                    click.echo("[DRY-RUN] Preview mode")
-                click.echo(f"Files moved: {len(result.files_moved)}")
-                click.echo(f"NFOs created: {len(result.nfos_created)}")
-                if result.errors:
-                    click.echo(f"Errors: {len(result.errors)}", err=True)
-                    for error in result.errors[:5]:  # Show first 5 errors
-                        click.echo(f"  {error}", err=True)
-        except Exception as e:
-            click.echo(f"Error processing {path}: {e}", err=True)
-            continue
+    except KeyboardInterrupt:
+        click.echo("\n⚠️  Operation cancelled by user", err=True)
+        raise SystemExit(1)
