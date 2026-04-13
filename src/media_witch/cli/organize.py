@@ -12,7 +12,8 @@ from ..features.subtitles.locale import (LocaleMapper, load_csv_rules,
                                          parse_cli_rules)
 from ..ui.prompts import (ask_extras_classification, ask_nfo_overrides,
                           ask_processing_choice, ask_season, ask_yes_no)
-from .common import locale_csv_option, locale_map_option, dry_run_option, quiet_option
+from .common import (dry_run_option, locale_csv_option, locale_map_option,
+                     quiet_option)
 
 
 def _find_leaf_directories(path: Path) -> list[Path]:
@@ -151,7 +152,8 @@ def _process_single_dir(
         dry_run: Preview mode
         quiet: Suppress output
     """
-    _process_single_dir_impl(path, mode, season, mapper, generate_nfo, dry_run, quiet, None)
+    _process_single_dir_impl(path, mode, season, mapper,
+                             generate_nfo, dry_run, quiet, None)
 
 
 def _process_single_dir_batch(
@@ -176,7 +178,8 @@ def _process_single_dir_batch(
         dry_run: Preview mode
         quiet: Suppress output
     """
-    _process_single_dir_impl(path, mode, season, mapper, generate_nfo, dry_run, quiet, root_dir)
+    _process_single_dir_impl(path, mode, season, mapper,
+                             generate_nfo, dry_run, quiet, root_dir)
 
 
 def _process_single_dir_impl(

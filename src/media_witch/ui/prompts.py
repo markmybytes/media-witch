@@ -37,7 +37,7 @@ def ask_processing_choice(path: Path, has_files: bool) -> str:
                 questionary.Choice("Skip this folder", "skip"),
             ],
             default="skip",
-        ).ask() or "skip"
+        ).unsafe_ask() or "skip"
     else:
         print("No files found. This folder likely contains subdirectories.\n")
         return questionary.select(
@@ -51,7 +51,7 @@ def ask_processing_choice(path: Path, has_files: bool) -> str:
                     "Contains multiple MOVIE SEQUELS", "movies"),
             ],
             default="skip",
-        ).ask() or "skip"
+        ).unsafe_ask() or "skip"
 
 
 def ask_season(default: int = 1) -> int:
@@ -65,7 +65,7 @@ def ask_season(default: int = 1) -> int:
     """
     while True:
         ans = questionary.text(
-            "Season number?", default=str(default)).ask()
+            "Season number?", default=str(default)).unsafe_ask()
         if ans is None:
             return default
         ans = ans.strip()
@@ -90,7 +90,7 @@ def ask_extras_classification(items: list[Path], defaults: list[bool]) -> list[b
         for i, (p, d) in enumerate(zip(items, defaults))
     ]
     selected = set(questionary.checkbox(
-        "Select EXTRAS", choices=choices).ask() or [])
+        "Select EXTRAS", choices=choices).unsafe_ask() or [])
     return [i in selected for i in range(len(items))]
 
 
@@ -112,7 +112,7 @@ def ask_nfo_overrides(videos: list[Path], season: int) -> dict[int, int]:
         print(f"  {i:2d}. {p.name:40s} → Episode {defaults[p]}")
     print()
 
-    if not (questionary.confirm("Override any episode numbers?", default=False).ask() or False):
+    if not (questionary.confirm("Override any episode numbers?", default=False).unsafe_ask() or False):
         return {}
 
     print("\n" + "─" * 60)
@@ -124,7 +124,7 @@ def ask_nfo_overrides(videos: list[Path], season: int) -> dict[int, int]:
             v = questionary.text(
                 f"[{idx}/{len(videos)}] {p.name}",
                 default=str(defaults[p])
-            ).ask()
+            ).unsafe_ask()
             if v is None:
                 v = str(defaults[p])
             v = v.strip()
@@ -146,4 +146,4 @@ def ask_yes_no(question: str, default: bool = False) -> bool:
     Returns:
         True for yes, False for no
     """
-    return questionary.confirm(question, default=default).ask() or default
+    return questionary.confirm(question, default=default).unsafe_ask() or default
