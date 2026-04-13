@@ -141,9 +141,34 @@ def ask_yes_no(question: str, default: bool = False) -> bool:
 
     Args:
         question: Question to ask
-        default: Default answer
+        default: Default answer (used if user cancels)
 
     Returns:
         True for yes, False for no
     """
-    return questionary.confirm(question, default=default).unsafe_ask() or default
+    answer = questionary.confirm(question, default=default).unsafe_ask()
+    return answer if answer is not None else default
+
+
+def ask_remove_unmapped_subtitles(mapper: object) -> bool:
+    """Ask if unmapped subtitles should be removed.
+
+    Args:
+        mapper: LocaleMapper instance
+
+    Returns:
+        True to remove unmapped subtitles, False to keep them
+    """
+    # Import here to avoid circular dependency
+    from ..features.subtitles.locale import LocaleMapper
+
+    if not isinstance(mapper, LocaleMapper):
+        return False
+
+    target_locales = mapper.get_target_locales()
+    if not target_locales:
+        return False
+
+    locales_str = ", ".join(sorted(target_locales))
+    question = f"Remove subtitles NOT in these locales: {locales_str}?"
+    return questionary.confirm(question, default=False).unsafe_ask() or False

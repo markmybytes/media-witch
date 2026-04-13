@@ -18,11 +18,18 @@ from .common import common_options, locale_csv_option, locale_map_option
 @click.argument("paths", nargs=-1, type=click.Path(exists=True), required=True)
 @locale_csv_option
 @locale_map_option
+@click.option(
+    "--remove",
+    is_flag=True,
+    default=False,
+    help="Remove subtitles whose locale is not in the mapping target list",
+)
 @common_options
 def subtitles_command(
     paths: tuple[str, ...],
     map_csv: str | None,
     locale_maps: tuple[str, ...],
+    remove: bool,
     dry_run: bool,
     verbose: bool,
     quiet: bool,
@@ -64,9 +71,14 @@ def subtitles_command(
         # Pair subtitles with videos
         pairs = pair_subtitles(subtitles, videos)
 
-        config = SubtitleConfig(locale_mapper=mapper, dry_run=dry_run)
+        config = SubtitleConfig(
+            locale_mapper=mapper,
+            dry_run=dry_run,
+            remove_unmapped=remove,
+        )
 
         total_renamed = 0
+        total_removed = 0
         total_skipped = 0
         total_errors = 0
 
@@ -77,12 +89,15 @@ def subtitles_command(
             try:
                 result = rename_subtitles(subs, video, config)
                 total_renamed += len(result.renamed)
+                total_removed += len(result.removed)
                 total_skipped += len(result.skipped)
                 total_errors += len(result.errors)
 
-                if verbose:
+                if verbose or dry_run:
                     for src, dst in result.renamed:
-                        click.echo(f"  {src.name} → {dst.name}")
+                        click.echo(f"  [RENAME] {src.name} → {dst.name}")
+                    for sub in result.removed:
+                        click.echo(f"  [REMOVE] {sub.name}")
 
             except Exception as e:
                 click.echo(
@@ -93,6 +108,8 @@ def subtitles_command(
             if dry_run:
                 click.echo("[DRY-RUN] Preview mode")
             click.echo(f"Subtitles renamed: {total_renamed}")
+            if remove:
+                click.echo(f"Subtitles removed: {total_removed}")
             click.echo(f"Skipped: {total_skipped}")
             if total_errors > 0:
                 click.echo(f"Errors: {total_errors}", err=True)

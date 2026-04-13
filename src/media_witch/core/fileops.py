@@ -100,6 +100,21 @@ class FileOps:
         if not self.dry:
             src.rename(dst)
 
+    def remove_file(self, path: Path, label: str = "[REMOVE]") -> None:
+        """Remove a file.
+
+        Args:
+            path: File path to remove
+            label: Log message label
+        """
+        p = self._norm(path)
+        if not p.exists():
+            self._log(f"[SKIP] Not found: {path}")
+            return
+        self._log(f"{label} {path}")
+        if not self.dry:
+            p.unlink()
+
     def write_text_if_absent(
         self,
         path: Path,

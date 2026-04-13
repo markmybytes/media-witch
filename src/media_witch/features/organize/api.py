@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -12,7 +11,7 @@ from ...core.fileops import FileOps
 from ...core.media import is_audio, is_subtitle, is_video, list_files_and_dirs
 from ...core.patterns import has_episode_pattern, natural_sort_key
 from ..nfo.api import NFOConfig, generate_episode_nfos
-from ..subtitles.api import SubtitleService
+from ..subtitles.api import SubtitleConfig, SubtitleService, rename_subtitles
 from ..subtitles.locale import LocaleMapper
 
 
@@ -26,19 +25,23 @@ class OrganizeConfig:
         locale_mapper: Optional LocaleMapper for subtitle renaming
         generate_nfo: Whether to generate NFO files (TV only)
         dry_run: If True, preview changes without executing
-        extras_classifier: Optional callback for classifying extras interactively
-        nfo_override_callback: Optional callback for NFO episode number overrides
+        extras_flags: List of boolean flags for extra classification (True = extra, False = primary)
+        episode_overrides: Dict mapping video index (1-based) to episode number
+        skip_nfo_generation: If True, skip NFO generation even if generate_nfo is True
         root_dir: Root directory for creating Season folders (for batch processing)
                  If set, Season folders are created at root_dir instead of path
+        remove_unmapped_subs: Whether to remove subtitles not in mapping target locales
     """
     mode: Literal["show", "movie", "skip"]
     season: int | None = None
     locale_mapper: LocaleMapper | None = None
     generate_nfo: bool = False
     dry_run: bool = False
-    extras_classifier: Callable[[list[Path], list[bool]], list[bool]] | None = None
-    nfo_override_callback: Callable[[list[Path], int], dict[int, int]] | None = None
+    extras_flags: list[bool] | None = None
+    episode_overrides: dict[int, int] | None = None
+    skip_nfo_generation: bool = False
     root_dir: Path | None = None
+    remove_unmapped_subs: bool = False
 
 
 @dataclass
@@ -97,10 +100,9 @@ def organize_tv_show(
     errors = []
     skipped = []
 
-    # Classify extras (interactive or automatic)
-    if config.extras_classifier:
-        defaults = classify_extras_auto(items)
-        flags = config.extras_classifier(items, defaults)
+    # Classify extras (use provided flags or fall back to automatic)
+    if config.extras_flags is not None:
+        flags = config.extras_flags
     else:
         flags = classify_extras_auto(items)
 
@@ -155,36 +157,37 @@ def organize_tv_show(
 
     # Handle subtitles
     if config.locale_mapper and moved_video_dsts:
-        subsvc = SubtitleService(config.locale_mapper, fops)
+        sub_config = SubtitleConfig(
+            locale_mapper=config.locale_mapper,
+            dry_run=config.dry_run,
+            remove_unmapped=config.remove_unmapped_subs,
+        )
         for vdst in sorted(moved_video_dsts, key=natural_sort_key):
             subs = [p for p in path.iterdir() if p.is_file()
                     and is_subtitle(p)]
             if season_dir.exists():
                 subs += [p for p in season_dir.iterdir()
                          if p.is_file() and is_subtitle(p)]
-            subsvc.plan(subs, vdst, aq)
+            if subs:
+                rename_subtitles(subs, vdst, sub_config)
+
+    # Commit all file operations before NFO generation
+    aq.commit()
+    fops.remove_dir_if_empty(path)
 
     # Generate NFOs
-    if config.generate_nfo and moved_video_dsts:
+    if config.generate_nfo and not config.skip_nfo_generation and moved_video_dsts:
         videos_sorted = sorted(moved_video_dsts, key=natural_sort_key)
-
-        # Get episode overrides if callback provided
-        episode_overrides = {}
-        if config.nfo_override_callback:
-            episode_overrides = config.nfo_override_callback(videos_sorted, season)
 
         nfo_config = NFOConfig(
             season=season,
             episode_start=1,
-            episode_overrides=episode_overrides,
+            episode_overrides=config.episode_overrides or {},
             dry_run=config.dry_run
         )
         nfo_result = generate_episode_nfos(videos_sorted, nfo_config)
         nfos_created.extend(nfo_result.created)
         errors.extend(nfo_result.errors)
-
-    aq.commit()
-    fops.remove_dir_if_empty(path)
 
     return OrganizeResult(
         files_moved=files_moved,
@@ -219,10 +222,9 @@ def organize_movie(
     errors = []
     skipped = []
 
-    # Classify extras (interactive or automatic)
-    if config.extras_classifier:
-        defaults = classify_extras_auto(items)
-        flags = config.extras_classifier(items, defaults)
+    # Classify extras (use provided flags or fall back to automatic)
+    if config.extras_flags is not None:
+        flags = config.extras_flags
     else:
         flags = classify_extras_auto(items)
 
@@ -273,10 +275,15 @@ def organize_movie(
 
     # Handle subtitles
     if config.locale_mapper and moved_video_dsts:
-        subsvc = SubtitleService(config.locale_mapper, fops)
+        sub_config = SubtitleConfig(
+            locale_mapper=config.locale_mapper,
+            dry_run=config.dry_run,
+            remove_unmapped=config.remove_unmapped_subs,
+        )
         subs = [p for p in path.iterdir() if p.is_file() and is_subtitle(p)]
         for vdst in sorted(moved_video_dsts, key=natural_sort_key):
-            subsvc.plan(subs, vdst, aq)
+            if subs:
+                rename_subtitles(subs, vdst, sub_config)
 
     aq.commit()
 

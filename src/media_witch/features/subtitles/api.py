@@ -15,12 +15,13 @@ class SubtitleConfig:
     """Configuration for subtitle operations.
 
     Attributes:
-        locale_mapper: LocaleMapper instance for locale code
-resolution
+        locale_mapper: LocaleMapper instance for locale code resolution
         dry_run: If True, preview changes without executing
+        remove_unmapped: If True, remove subtitles not in mapping target locales
     """
     locale_mapper: LocaleMapper
     dry_run: bool = False
+    remove_unmapped: bool = False
 
 
 @dataclass
@@ -30,10 +31,12 @@ class SubtitleResult:
     Attributes:
         renamed: List of (source, destination) path tuples for renamed files
         skipped: List of files that were skipped
+        removed: List of files that were removed
         errors: List of error messages
     """
     renamed: list[tuple[Path, Path]]
     skipped: list[Path]
+    removed: list[Path]
     errors: list[str]
 
 
@@ -153,13 +156,29 @@ def rename_subtitles(
 
     renamed = []
     skipped = []
+    removed = []
     errors = []
+
+    # Get allowed target locales if remove_unmapped is enabled
+    allowed_locales = config.locale_mapper.get_target_locales(
+    ) if config.remove_unmapped else set()
 
     for sub in subtitles:
         try:
             if not service.pairs_with(sub, video):
                 skipped.append(sub)
                 continue
+
+            # Check if subtitle should be removed (not in allowed locales)
+            if config.remove_unmapped:
+                token = service._right_most_token(sub)
+                mapped_locale = config.locale_mapper.resolve(
+                    token) if token else token
+                if mapped_locale and mapped_locale not in allowed_locales:
+                    if not config.dry_run:
+                        fops.remove_file(sub, label="[REMOVE]")
+                    removed.append(sub)
+                    continue
 
             dst = video.parent / service.normalized_target(sub, video).name
             if sub != dst:
@@ -178,7 +197,7 @@ def rename_subtitles(
         except Exception as e:
             errors.append(f"Error processing {sub}: {e}")
 
-    return SubtitleResult(renamed=renamed, skipped=skipped, errors=errors)
+    return SubtitleResult(renamed=renamed, skipped=skipped, removed=removed, errors=errors)
 
 
 def pair_subtitles(

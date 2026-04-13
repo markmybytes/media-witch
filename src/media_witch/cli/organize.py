@@ -6,12 +6,15 @@ from pathlib import Path
 
 import click
 
-from ..core.media import list_files_and_dirs
-from ..features.organize.api import OrganizeConfig, organize_directory
+from ..core.media import is_video, list_files_and_dirs
+from ..core.patterns import natural_sort_key
+from ..features.organize.api import (OrganizeConfig, classify_extras_auto,
+                                     organize_directory)
 from ..features.subtitles.locale import (LocaleMapper, load_csv_rules,
                                          parse_cli_rules)
 from ..ui.prompts import (ask_extras_classification, ask_nfo_overrides,
-                          ask_processing_choice, ask_season, ask_yes_no)
+                          ask_processing_choice, ask_remove_unmapped_subtitles,
+                          ask_season, ask_yes_no)
 from .common import (dry_run_option, locale_csv_option, locale_map_option,
                      quiet_option)
 
@@ -33,23 +36,6 @@ def _find_leaf_directories(path: Path) -> list[Path]:
     for subdir in dirs:
         leafs.extend(_find_leaf_directories(subdir))
     return leafs
-
-
-def _make_nfo_callback(season: int) -> callable:
-    """Create NFO callback that asks for generation first.
-
-    Args:
-        season: Season number for context
-
-    Returns:
-        Callback that asks about NFO generation then episode overrides if yes
-    """
-    def nfo_callback(videos: list[Path]) -> dict[int, int]:
-        generate_nfo = ask_yes_no("Generate NFO files?", default=True)
-        if not generate_nfo:
-            return {}
-        return ask_nfo_overrides(videos, season)
-    return nfo_callback
 
 
 def _process_interactive(
@@ -204,21 +190,58 @@ def _process_single_dir_impl(
         quiet: Suppress output
         root_dir: Root directory for Season output (batch mode). If None, uses path.
     """
-    # Create NFO callback that asks user about generation
-    nfo_callback = None
-    if generate_nfo and mode == "show" and season is not None:
-        nfo_callback = _make_nfo_callback(season)
+    # Step 1: Ask about subtitle removal
+    remove_unmapped_subs = False
+    if mapper:
+        remove_unmapped_subs = ask_remove_unmapped_subtitles(mapper)
 
-    # Create config with interactive callbacks
+    # Step 2: Get items to classify for extras
+    files, dirs = list_files_and_dirs(path)
+    items = dirs + files
+
+    # Step 3: Ask about extras classification (if items exist)
+    extras_flags = None
+    if items:
+        defaults = classify_extras_auto(items)
+        extras_flags = ask_extras_classification(items, defaults)
+
+    # Step 4: Ask about NFO generation and episode overrides (TV shows only)
+    skip_nfo = False
+    episode_overrides = None
+
+    if mode == "show" and season is not None and generate_nfo:
+        # Find which videos will actually be organized (not marked as extras)
+        videos_kept = []
+        if extras_flags:
+            for i, item in enumerate(items):
+                if i < len(extras_flags) and not extras_flags[i] and is_video(item):
+                    videos_kept.append(item)
+        else:
+            videos_kept = [f for f in files if is_video(f)]
+
+        videos_sorted = sorted(videos_kept, key=natural_sort_key)
+
+        if videos_sorted:
+            # Ask if user wants to generate NFO files
+            generate_nfo_answer = ask_yes_no("Generate NFO files?", default=True)
+            skip_nfo = not generate_nfo_answer
+
+            # Ask for episode overrides if user said yes
+            if not skip_nfo:
+                episode_overrides = ask_nfo_overrides(videos_sorted, season)
+
+    # Step 5: Create config with all answers (no more callbacks)
     config = OrganizeConfig(
         mode=mode,  # type: ignore
         season=season,
         locale_mapper=mapper,
         generate_nfo=generate_nfo,
         dry_run=dry_run,
-        extras_classifier=ask_extras_classification,
-        nfo_override_callback=nfo_callback,
+        extras_flags=extras_flags,
+        episode_overrides=episode_overrides,
+        skip_nfo_generation=skip_nfo,
         root_dir=root_dir,
+        remove_unmapped_subs=remove_unmapped_subs,
     )
 
     try:

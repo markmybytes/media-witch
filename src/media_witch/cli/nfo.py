@@ -8,6 +8,7 @@ import click
 
 from ..core.media import is_video
 from ..features.nfo.api import NFOConfig, generate_episode_nfos
+from ..ui.prompts import ask_nfo_overrides
 from .common import common_options
 
 
@@ -25,11 +26,18 @@ from .common import common_options
     default=1,
     help="Starting episode number",
 )
+@click.option(
+    "--interactive",
+    is_flag=True,
+    default=False,
+    help="Interactively override episode numbers",
+)
 @common_options
 def nfo_command(
     paths: tuple[str, ...],
     season: int,
     episode_start: int,
+    interactive: bool,
     dry_run: bool,
     verbose: bool,
     quiet: bool,
@@ -54,10 +62,16 @@ def nfo_command(
                 click.echo(f"No video files found in {path}")
             continue
 
+        # Get episode overrides if interactive mode
+        episode_overrides = {}
+        if interactive:
+            episode_overrides = ask_nfo_overrides(videos, season)
+
         # Generate NFOs
         config = NFOConfig(
             season=season,
             episode_start=episode_start,
+            episode_overrides=episode_overrides,
             dry_run=dry_run,
         )
 

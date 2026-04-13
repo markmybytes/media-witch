@@ -73,6 +73,18 @@ class LocaleMapper:
                     return r.target
         return token
 
+    def get_target_locales(self) -> set[str]:
+        """Get all target locales from mapping rules.
+
+        Returns:
+            Set of target locale codes
+        """
+        targets = set()
+        for src in (self.cli_rules, self.csv_rules):
+            for r in src:
+                targets.add(r.target)
+        return targets
+
 
 def parse_cli_rules(cli_rules: list[str]) -> list[Rule]:
     """Parse locale mapping rules from CLI arguments.
