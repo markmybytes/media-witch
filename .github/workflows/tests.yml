@@ -28,7 +28,7 @@ jobs:
 
     - name: Lint with ruff
       run: |
-        ruff check src/media_witch tests --select E,W,F,I,B,C4,UP
+        ruff check src/media_witch tests
         ruff format --check src/media_witch tests
       continue-on-error: true
 
