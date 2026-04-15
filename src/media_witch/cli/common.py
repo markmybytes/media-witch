@@ -12,13 +12,15 @@ dry_run_option = click.option(
 )
 
 verbose_option = click.option(
-    "-v", "--verbose",
+    "-v",
+    "--verbose",
     is_flag=True,
     help="Enable verbose output",
 )
 
 quiet_option = click.option(
-    "-q", "--quiet",
+    "-q",
+    "--quiet",
     is_flag=True,
     help="Suppress non-essential output",
 )

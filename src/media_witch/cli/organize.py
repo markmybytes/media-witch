@@ -8,15 +8,17 @@ import click
 
 from ..core.media import is_video, list_files_and_dirs
 from ..core.patterns import natural_sort_key
-from ..features.organize.api import (OrganizeConfig, classify_extras_auto,
-                                     organize_directory)
-from ..features.subtitles.locale import (LocaleMapper, load_csv_rules,
-                                         parse_cli_rules)
-from ..ui.prompts import (ask_extras_classification, ask_nfo_overrides,
-                          ask_processing_choice, ask_remove_unmapped_subtitles,
-                          ask_season, ask_yes_no)
-from .common import (dry_run_option, locale_csv_option, locale_map_option,
-                     quiet_option)
+from ..features.organize.api import OrganizeConfig, classify_extras_auto, organize_directory
+from ..features.subtitles.locale import LocaleMapper, load_csv_rules, parse_cli_rules
+from ..ui.prompts import (
+    ask_extras_classification,
+    ask_nfo_overrides,
+    ask_processing_choice,
+    ask_remove_unmapped_subtitles,
+    ask_season,
+    ask_yes_no,
+)
+from .common import dry_run_option, locale_csv_option, locale_map_option, quiet_option
 
 
 def _find_leaf_directories(path: Path) -> list[Path]:
