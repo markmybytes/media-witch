@@ -1,10 +1,8 @@
 name: Lint & Format
 
 on:
-  push:
-    branches: [ main, develop ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
   lint:
@@ -24,11 +22,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install ruff mypy
 
-    - name: Check code style with ruff
-      run: ruff check src/media_witch tests --select E,W,F,I,B,C4,UP
+    - name: Lint with ruff
+      run: ruff check
 
     - name: Check formatting with ruff
-      run: ruff format --check src/media_witch tests
+      run: ruff format --check
 
     - name: Type check with mypy
-      run: mypy src/media_witch
+      run: mypy
