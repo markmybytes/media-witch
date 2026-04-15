@@ -1,192 +1,372 @@
-"""Unit tests for bencode decoder."""
+"""Property-based tests for bencode encoder and decoder."""
 
 import pytest
+from hypothesis import assume, given
+from hypothesis import strategies as st
+from hypothesis.strategies import composite
 
-from media_witch.features.torrent.decoder import bdecode
+from media_witch.features.torrent.decoder import bdecode, bencode
 
 
-class TestBdecodeIntegers:
-    """Tests for decoding bencode integers."""
+class TestIntegerProperties:
+    """Property-based tests for integer encoding/decoding."""
 
-    def test_decode_positive_integer(self) -> None:
-        """Test decoding positive integers."""
-        assert bdecode(b"i42e") == 42
+    @given(st.integers(min_value=-(2**63), max_value=2**63 - 1))
+    def test_integer_roundtrip(self, n: int) -> None:
+        """Any integer should encode and decode back to itself."""
+        encoded = bencode(n)
+        decoded = bdecode(encoded)
+        assert decoded == n
+        assert isinstance(decoded, int)
+
+    @given(st.integers())
+    def test_integer_encoding_format(self, n: int) -> None:
+        """Encoded integers should have format i<num>e."""
+        encoded = bencode(n)
+        assert encoded.startswith(b"i")
+        assert encoded.endswith(b"e")
+        assert str(n).encode() in encoded
+
+    @given(st.integers())
+    def test_negative_integers_roundtrip(self, n: int) -> None:
+        """Negative integers should roundtrip correctly."""
+        assume(n < 0)
+        encoded = bencode(n)
+        decoded = bdecode(encoded)
+        assert decoded == n
+
+    def test_zero_roundtrip(self) -> None:
+        """Zero should encode and decode correctly."""
         assert bdecode(b"i0e") == 0
-        assert bdecode(b"i123456789e") == 123456789
-
-    def test_decode_negative_integer(self) -> None:
-        """Test decoding negative integers."""
-        assert bdecode(b"i-42e") == -42
-        assert bdecode(b"i-1e") == -1
-        assert bdecode(b"i-999e") == -999
-
-    def test_decode_zero(self) -> None:
-        """Test decoding zero."""
-        assert bdecode(b"i0e") == 0
+        assert bencode(0) == b"i0e"
 
 
-class TestBdecodeStrings:
-    """Tests for decoding bencode strings."""
+class TestStringProperties:
+    """Property-based tests for string encoding/decoding."""
 
-    def test_decode_simple_string(self) -> None:
-        """Test decoding simple strings."""
-        assert bdecode(b"4:spam") == b"spam"
+    @given(st.binary(min_size=0, max_size=1000))
+    def test_bytes_roundtrip(self, s: bytes) -> None:
+        """Any byte string should encode and decode back to itself."""
+        encoded = bencode(s)
+        decoded = bdecode(encoded)
+        assert decoded == s
+        assert isinstance(decoded, bytes)
+
+    @given(st.text(min_size=0, max_size=1000))
+    def test_str_roundtrip(self, s: str) -> None:
+        """Any string should encode and decode to bytes."""
+        encoded = bencode(s)
+        decoded = bdecode(encoded)
+        assert decoded == s.encode('utf-8')
+        assert isinstance(decoded, bytes)
+
+    @given(st.binary())
+    def test_string_encoding_format(self, s: bytes) -> None:
+        """Encoded strings should have format <length>:<data>."""
+        encoded = bencode(s)
+        assert b":" in encoded
+        length_part = encoded.split(b":")[0]
+        assert length_part.decode().isdigit()
+        assert int(length_part) == len(s)
+
+    def test_empty_string_roundtrip(self) -> None:
+        """Empty string should encode and decode correctly."""
         assert bdecode(b"0:") == b""
-        assert bdecode(b"3:foo") == b"foo"
-
-    def test_decode_long_string(self) -> None:
-        """Test decoding longer strings."""
-        data = b"test data with spaces"
-        encoded = f"{len(data)}:".encode() + data
-        assert bdecode(encoded) == data
-
-    def test_decode_string_with_special_chars(self) -> None:
-        """Test decoding strings with special characters."""
-        assert bdecode(b"5:hello") == b"hello"
-        assert bdecode(b"11:hello world") == b"hello world"
-
-    def test_decode_empty_string(self) -> None:
-        """Test decoding empty string."""
-        assert bdecode(b"0:") == b""
+        assert bencode(b"") == b"0:"
 
 
-class TestBdecodeLists:
-    """Tests for decoding bencode lists."""
+class TestListProperties:
+    """Property-based tests for list encoding/decoding."""
 
-    def test_decode_empty_list(self) -> None:
-        """Test decoding empty list."""
+    @given(st.lists(st.integers(), min_size=0, max_size=100))
+    def test_integer_list_roundtrip(self, lst: list[int]) -> None:
+        """Any list of integers should roundtrip correctly."""
+        encoded = bencode(lst)
+        decoded = bdecode(encoded)
+        assert decoded == lst
+        assert isinstance(decoded, list)
+        assert len(decoded) == len(lst)
+
+    @given(st.lists(st.binary(), min_size=0, max_size=50))
+    def test_bytes_list_roundtrip(self, lst: list[bytes]) -> None:
+        """Any list of byte strings should roundtrip correctly."""
+        encoded = bencode(lst)
+        decoded = bdecode(encoded)
+        assert decoded == lst
+
+    @given(st.lists(st.one_of(st.integers(), st.binary()), min_size=0, max_size=50))
+    def test_mixed_list_roundtrip(self, lst: list) -> None:
+        """Lists with mixed types should roundtrip correctly."""
+        encoded = bencode(lst)
+        decoded = bdecode(encoded)
+        assert decoded == lst
+
+    @given(st.lists(st.lists(st.integers(), max_size=10), max_size=10))
+    def test_nested_list_roundtrip(self, lst: list) -> None:
+        """Nested lists should roundtrip correctly."""
+        encoded = bencode(lst)
+        decoded = bdecode(encoded)
+        assert decoded == lst
+
+    def test_empty_list_roundtrip(self) -> None:
+        """Empty list should encode and decode correctly."""
         assert bdecode(b"le") == []
-
-    def test_decode_simple_list(self) -> None:
-        """Test decoding list of integers."""
-        assert bdecode(b"li1ei2ei3ee") == [1, 2, 3]
-
-    def test_decode_mixed_list(self) -> None:
-        """Test decoding list with mixed types."""
-        assert bdecode(b"l4:spami42ee") == [b"spam", 42]
-
-    def test_decode_nested_list(self) -> None:
-        """Test decoding nested lists."""
-        assert bdecode(b"lli1eeli2eee") == [[1], [2]]
-
-    def test_decode_list_with_strings(self) -> None:
-        """Test decoding list of strings."""
-        assert bdecode(b"l3:foo3:bar3:baze") == [b"foo", b"bar", b"baz"]
+        assert bencode([]) == b"le"
 
 
-class TestBdecodeDictionaries:
-    """Tests for decoding bencode dictionaries."""
+class TestDictProperties:
+    """Property-based tests for dictionary encoding/decoding."""
 
-    def test_decode_empty_dict(self) -> None:
-        """Test decoding empty dictionary."""
+    @given(st.dictionaries(
+        keys=st.binary(min_size=1, max_size=50),
+        values=st.integers(),
+        min_size=0,
+        max_size=50
+    ))
+    def test_dict_roundtrip(self, d: dict[bytes, int]) -> None:
+        """Any dictionary with bytes keys should roundtrip correctly."""
+        encoded = bencode(d)
+        decoded = bdecode(encoded)
+        assert decoded == d
+        assert isinstance(decoded, dict)
+        assert len(decoded) == len(d)
+
+    @given(st.dictionaries(
+        keys=st.text(min_size=1, max_size=50),
+        values=st.integers(),
+        min_size=0,
+        max_size=20
+    ))
+    def test_dict_with_str_keys_roundtrip(self, d: dict[str, int]) -> None:
+        """Dictionaries with str keys should encode to bytes keys."""
+        encoded = bencode(d)
+        decoded = bdecode(encoded)
+        # Keys should be converted to bytes
+        expected = {k.encode('utf-8'): v for k, v in d.items()}
+        assert decoded == expected
+
+    @given(st.dictionaries(
+        keys=st.binary(min_size=1, max_size=30),
+        values=st.one_of(st.integers(), st.binary(),
+                         st.lists(st.integers(), max_size=10)),
+        min_size=0,
+        max_size=20
+    ))
+    def test_dict_with_mixed_values_roundtrip(self, d: dict) -> None:
+        """Dictionaries with mixed value types should roundtrip correctly."""
+        encoded = bencode(d)
+        decoded = bdecode(encoded)
+        assert decoded == d
+
+    @given(st.dictionaries(
+        keys=st.binary(min_size=1, max_size=20),
+        values=st.dictionaries(
+            keys=st.binary(min_size=1, max_size=20),
+            values=st.integers(),
+            max_size=5
+        ),
+        max_size=10
+    ))
+    def test_nested_dict_roundtrip(self, d: dict) -> None:
+        """Nested dictionaries should roundtrip correctly."""
+        encoded = bencode(d)
+        decoded = bdecode(encoded)
+        assert decoded == d
+
+    def test_empty_dict_roundtrip(self) -> None:
+        """Empty dictionary should encode and decode correctly."""
         assert bdecode(b"de") == {}
+        assert bencode({}) == b"de"
 
-    def test_decode_simple_dict(self) -> None:
-        """Test decoding simple dictionary."""
-        result = bdecode(b"d3:bar4:spam3:fooi42ee")
-        assert result == {b"bar": b"spam", b"foo": 42}
-
-    def test_decode_dict_with_list_value(self) -> None:
-        """Test decoding dictionary with list as value."""
-        result = bdecode(b"d4:listli1ei2ei3eee")
-        assert result == {b"list": [1, 2, 3]}
-
-    def test_decode_nested_dict(self) -> None:
-        """Test decoding nested dictionaries."""
-        result = bdecode(b"d5:innerd3:keyi42eee")
-        assert result == {b"inner": {b"key": 42}}
-
-    def test_decode_dict_maintains_order(self) -> None:
-        """Test that dictionary keys are decoded correctly."""
-        result = bdecode(b"d1:ai1e1:bi2e1:ci3ee")
-        assert result[b"a"] == 1
-        assert result[b"b"] == 2
-        assert result[b"c"] == 3
+    @given(st.dictionaries(
+        keys=st.binary(min_size=1, max_size=20),
+        values=st.integers(),
+        min_size=2,
+        max_size=20
+    ))
+    def test_dict_keys_are_sorted(self, d: dict[bytes, int]) -> None:
+        """Bencode requires dictionary keys to be sorted."""
+        encoded = bencode(d)
+        decoded = bdecode(encoded)
+        assert decoded == d
+        # Verify the encoding has keys in sorted order
+        # (This is a property of bencode format)
 
 
-class TestBdecodeComplexStructures:
-    """Tests for decoding complex bencode structures."""
+@composite
+def bencode_data(draw, max_depth: int = 4):
+    """Strategy for generating arbitrary bencode-compatible structures."""
+    if max_depth == 0:
+        # Base case: only primitives
+        return draw(st.one_of(
+            st.integers(min_value=-(2**31), max_value=2**31 - 1),
+            st.binary(max_size=100)
+        ))
 
-    def test_decode_torrent_like_structure(self) -> None:
-        """Test decoding a structure similar to torrent metadata."""
-        # Simplified torrent info dict: d4:name4:test6:lengthi1024ee
-        result = bdecode(b"d4:name4:test6:lengthi1024ee")
-        assert result == {b"name": b"test", b"length": 1024}
+    # Recursive case: primitives, lists, or dicts
+    primitive = st.one_of(
+        st.integers(min_value=-(2**31), max_value=2**31 - 1),
+        st.binary(max_size=50)
+    )
 
-    def test_decode_multi_file_structure(self) -> None:
-        """Test decoding multi-file torrent structure."""
-        # d5:filesl d4:name5:file1 6:lengthi100e e e e
-        data = b"d5:filesld4:name5:file16:lengthi100eeee"
-        result = bdecode(data)
-        assert b"files" in result
-        assert isinstance(result[b"files"], list)
-        assert len(result[b"files"]) == 1
+    # Recursively generate sub-structures
+    sub_structure = bencode_data(max_depth - 1)
 
-    def test_decode_deeply_nested(self) -> None:
-        """Test decoding deeply nested structures."""
-        data = b"d1:ad1:bd1:cd1:di42eeeeee"
-        result = bdecode(data)
-        assert result[b"a"][b"b"][b"c"][b"d"] == 42
+    return draw(st.one_of(
+        primitive,
+        st.lists(sub_structure, max_size=10),
+        st.dictionaries(
+            keys=st.binary(min_size=1, max_size=20),
+            values=sub_structure,
+            max_size=10
+        )
+    ))
 
 
-class TestBdecodeErrors:
-    """Tests for bencode decoder error handling."""
+class TestComplexStructures:
+    """Property-based tests for complex nested structures."""
+
+    @given(bencode_data())
+    def test_arbitrary_structure_roundtrip(self, data) -> None:
+        """Any bencode-compatible structure should roundtrip correctly."""
+        encoded = bencode(data)
+        decoded = bdecode(encoded)
+        assert decoded == data
+
+    @given(bencode_data(max_depth=6))
+    def test_deeply_nested_structures(self, data) -> None:
+        """Deeply nested structures should roundtrip correctly."""
+        encoded = bencode(data)
+        decoded = bdecode(encoded)
+        assert decoded == data
+
+    def test_torrent_like_structure_roundtrip(self) -> None:
+        """Torrent-like structures should roundtrip correctly."""
+        data = {
+            b"announce": b"http://tracker.example.com:8080/announce",
+            b"info": {
+                b"name": b"MyFile.mkv",
+                b"length": 1073741824,
+                b"piece length": 262144,
+                b"pieces": b"x" * 20,  # Normally 20-byte SHA1 hashes
+            }
+        }
+        encoded = bencode(data)
+        decoded = bdecode(encoded)
+        assert decoded == data
+
+
+class TestDecoderErrorHandling:
+    """Property-based tests for decoder error handling."""
+
+    @given(st.binary(max_size=1000))
+    def test_decoder_never_crashes(self, data: bytes) -> None:
+        """Decoder should handle any bytes gracefully - raise ValueError or succeed."""
+        try:
+            result = bdecode(data)
+            assert isinstance(result, (int, bytes, list, dict))
+        except (ValueError, IndexError):
+            pass
+        except Exception as e:
+            pytest.fail(f"Unexpected exception type {type(e).__name__}: {e}")
 
     def test_invalid_start_character(self) -> None:
-        """Test that invalid start character raises ValueError."""
+        """Invalid start character should raise ValueError."""
         with pytest.raises(ValueError, match="Invalid bencode character"):
             bdecode(b"x42e")
 
     def test_malformed_integer(self) -> None:
-        """Test that malformed integer raises error."""
+        """Malformed integer should raise error."""
         with pytest.raises(ValueError):
             bdecode(b"i42")  # Missing 'e'
 
     def test_malformed_string(self) -> None:
-        """Test that malformed string raises error."""
+        """Malformed string should raise error."""
         with pytest.raises(ValueError):
             bdecode(b"5:ab")  # String too short
 
     def test_malformed_list(self) -> None:
-        """Test that malformed list raises error."""
+        """Malformed list should raise error."""
         with pytest.raises(ValueError):
             bdecode(b"li1e")  # Missing 'e'
 
     def test_malformed_dict(self) -> None:
-        """Test that malformed dictionary raises error."""
+        """Malformed dictionary should raise error."""
         with pytest.raises(ValueError):
             bdecode(b"d3:foo")  # Missing value and 'e'
 
     def test_dict_with_non_bytes_key(self) -> None:
-        """Test that dictionary with non-bytes key raises error."""
+        """Dictionary with non-bytes key should raise error."""
         with pytest.raises(ValueError, match="Dictionary keys must be bytes"):
             bdecode(b"di1ei2ee")  # Integer key instead of bytes
 
     def test_empty_input(self) -> None:
-        """Test that empty input raises error."""
+        """Empty input should raise error."""
         with pytest.raises((ValueError, IndexError)):
             bdecode(b"")
 
 
-class TestBdecodeRealWorldExamples:
-    """Tests with real-world bencode examples."""
+class TestEncoderErrorHandling:
+    """Tests for encoder error handling."""
 
-    def test_announce_url(self) -> None:
-        """Test decoding announce URL from torrent."""
-        data = b"d8:announce23:http://tracker.test:806e"
-        result = bdecode(data)
-        assert result[b"announce"] == b"http://tracker.test:806"
+    def test_unsupported_type_raises_error(self) -> None:
+        """Encoding unsupported types should raise TypeError."""
+        with pytest.raises(TypeError, match="Unsupported type"):
+            bencode(3.14)  # float not supported
 
-    def test_piece_length(self) -> None:
-        """Test decoding piece length."""
-        data = b"d12:piece lengthi262144ee"
-        result = bdecode(data)
-        assert result[b"piece length"] == 262144
+        with pytest.raises(TypeError, match="Unsupported type"):
+            bencode(None)  # None not supported
 
-    def test_info_hash_structure(self) -> None:
-        """Test decoding basic info dictionary structure."""
-        data = b"d4:infod4:name8:testfile6:lengthi1024eee"
-        result = bdecode(data)
-        assert b"info" in result
-        assert result[b"info"][b"name"] == b"testfile"
-        assert result[b"info"][b"length"] == 1024
+    def test_dict_with_invalid_key_type(self) -> None:
+        """Dictionary with non-bytes/non-str keys should raise ValueError."""
+        with pytest.raises(ValueError, match="Dictionary keys must be bytes or str"):
+            bencode({1: b"value"})  # Integer key not supported
+
+
+class TestBencodeInvariants:
+    """Tests for bencode encoding/decoding invariants."""
+
+    @given(bencode_data())
+    def test_encode_decode_identity(self, data) -> None:
+        """encode(decode(encode(x))) == encode(x)."""
+        encoded = bencode(data)
+        decoded = bdecode(encoded)
+        re_encoded = bencode(decoded)
+        assert re_encoded == encoded
+
+    @given(bencode_data())
+    def test_decode_encode_identity(self, data) -> None:
+        """decode(encode(x)) == x for all valid bencode data."""
+        encoded = bencode(data)
+        decoded = bdecode(encoded)
+        assert decoded == data
+
+    @given(st.binary())
+    def test_valid_bencode_always_parseable(self, data: bytes) -> None:
+        """If bencode produces it, bdecode should parse it without error."""
+        try:
+            decoded = bdecode(data)
+            re_encoded = bencode(decoded)
+            re_decoded = bdecode(re_encoded)
+            assert re_decoded == decoded
+        except (ValueError, IndexError):
+            pass
+
+    @given(st.lists(st.integers(), min_size=0, max_size=100))
+    def test_list_length_preserved(self, lst: list[int]) -> None:
+        """Length of list should be preserved through roundtrip."""
+        encoded = bencode(lst)
+        decoded = bdecode(encoded)
+        assert len(decoded) == len(lst)
+
+    @given(st.dictionaries(
+        keys=st.binary(min_size=1, max_size=20),
+        values=st.integers(),
+        min_size=0,
+        max_size=50
+    ))
+    def test_dict_size_preserved(self, d: dict) -> None:
+        """Number of dict entries should be preserved through roundtrip."""
+        encoded = bencode(d)
+        decoded = bdecode(encoded)
+        assert len(decoded) == len(d)

@@ -1,8 +1,55 @@
-"""Bencode decoder for torrent files."""
+"""Bencode encoder and decoder for torrent files."""
 
 from __future__ import annotations
 
 from typing import Any
+
+
+def bencode(data: Any) -> bytes:
+    """Encode Python data to bencode format.
+
+    Bencode is the encoding used by BitTorrent for storing and transmitting
+    loosely structured data.
+
+    Args:
+        data: Python object (dict, list, int, bytes, or str)
+
+    Returns:
+        Bencode-encoded bytes
+
+    Raises:
+        TypeError: If data contains unsupported types
+        ValueError: If dict contains non-bytes/non-str keys
+    """
+    if isinstance(data, int):
+        return f"i{data}e".encode()
+
+    elif isinstance(data, bytes):
+        return f"{len(data)}:".encode() + data
+
+    elif isinstance(data, str):
+        # Convert str to bytes for encoding
+        data_bytes = data.encode('utf-8')
+        return f"{len(data_bytes)}:".encode() + data_bytes
+
+    elif isinstance(data, list):
+        encoded_items = b"".join(bencode(item) for item in data)
+        return b"l" + encoded_items + b"e"
+
+    elif isinstance(data, dict):
+        # Bencode requires keys to be sorted
+        sorted_items = []
+        for key, value in sorted(data.items()):
+            if isinstance(key, str):
+                key = key.encode('utf-8')
+            elif not isinstance(key, bytes):
+                raise ValueError(f"Dictionary keys must be bytes or str, got {type(key)}")
+            sorted_items.append(bencode(key))
+            sorted_items.append(bencode(value))
+        return b"d" + b"".join(sorted_items) + b"e"
+
+    else:
+        raise TypeError(f"Unsupported type for bencode: {type(data)}")
 
 
 def bdecode(data: bytes) -> Any:

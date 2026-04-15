@@ -1,10 +1,41 @@
 """Shared pytest fixtures for all tests."""
 
+import os
 from pathlib import Path
 
 import pytest
+from hypothesis import HealthCheck, Verbosity, settings
 
 from media_witch.core.fileops import FileOps
+
+# ============================================================================
+# Hypothesis configuration
+# ============================================================================
+
+# Register profiles for different environments
+settings.register_profile(
+    "ci",
+    max_examples=1000,
+    deadline=1000,
+    suppress_health_check=[HealthCheck.too_slow],
+)
+
+settings.register_profile(
+    "dev",
+    max_examples=100,
+    deadline=500,
+)
+
+settings.register_profile(
+    "debug",
+    max_examples=10,
+    deadline=None,
+    verbosity=Verbosity.verbose,
+)
+
+# Load profile based on environment variable
+profile = os.getenv("HYPOTHESIS_PROFILE", "dev")
+settings.load_profile(profile)
 
 
 @pytest.fixture
