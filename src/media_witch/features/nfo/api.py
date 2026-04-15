@@ -107,36 +107,3 @@ def generate_episode_nfos(
             errors.append(f"Error creating NFO for {video}: {e}")
 
     return NFOResult(created=created, skipped=skipped, errors=errors)
-
-
-def generate_nfo(
-    video: Path,
-    season: int,
-    episode: int,
-    dry_run: bool = False,
-) -> Path | None:
-    """Generate a single NFO file for a video.
-
-    Args:
-        video: Video file path
-        season: Season number
-        episode: Episode number
-        dry_run: If True, preview without creating file
-
-    Returns:
-        Path to created NFO file, or None if skipped
-    """
-    fops = FileOps(dry_run=dry_run)
-    nfo_path = video.with_suffix(".nfo")
-
-    if nfo_path.exists() and not dry_run:
-        return None
-
-    content = generate_nfo_content(
-        title=video.stem,
-        season=season,
-        episode=episode,
-    )
-
-    fops.write_text_if_absent(nfo_path, content, label="[NFO]")
-    return nfo_path

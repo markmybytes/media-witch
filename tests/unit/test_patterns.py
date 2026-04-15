@@ -4,8 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from media_witch.core.patterns import (extract_season_episode,
-                                       has_episode_pattern, natural_sort_key)
+from media_witch.core.patterns import has_episode_pattern, natural_sort_key
 
 
 class TestHasEpisodePattern:
@@ -32,25 +31,6 @@ class TestHasEpisodePattern:
         """Test files without episode patterns."""
         assert has_episode_pattern("Random.Movie.mkv") is False
         assert has_episode_pattern("No.Pattern.Here.mp4") is False
-
-
-class TestExtractSeasonEpisode:
-    """Tests for extract_season_episode function."""
-
-    def test_s01e01_format(self) -> None:
-        """Test S##E## format extraction."""
-        assert extract_season_episode("Show.S02E05.mkv") == (2, 5)
-        assert extract_season_episode("Show.S1E1.mkv") == (1, 1)
-        assert extract_season_episode("Show.S10E99.mkv") == (10, 99)
-
-    def test_bracket_format(self) -> None:
-        """Test [##] format extraction."""
-        assert extract_season_episode("[12].mkv") == (None, 12)
-        assert extract_season_episode("[1].mkv") == (None, 1)
-
-    def test_no_pattern(self) -> None:
-        """Test files without episode patterns."""
-        assert extract_season_episode("Random.Movie.mkv") == (None, None)
 
 
 class TestNaturalSortKey:

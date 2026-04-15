@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from media_witch.features.nfo.api import (NFOConfig, generate_episode_nfos,
-                                          generate_nfo, generate_nfo_content)
+                                          generate_nfo_content)
 
 
 class TestGenerateNfoContent:
@@ -136,44 +136,3 @@ class TestGenerateEpisodeNfos:
 
         assert len(result.skipped) == 1
         assert nfo.read_text() == "existing content"
-
-
-class TestGenerateNfo:
-    """Tests for generate_nfo function."""
-
-    def test_generates_single_nfo(self, tmp_path: Path) -> None:
-        """Test single NFO generation."""
-        video = tmp_path / "episode.mkv"
-        video.touch()
-
-        nfo_path = generate_nfo(video, season=1, episode=5, dry_run=False)
-
-        assert nfo_path is not None
-        assert nfo_path.exists()
-        content = nfo_path.read_text()
-        assert '<episode>5</episode>' in content
-        assert '<season>1</season>' in content
-
-    def test_dry_run_returns_path(self, tmp_path: Path) -> None:
-        """Test dry-run returns path but doesn't create file."""
-        video = tmp_path / "episode.mkv"
-        video.touch()
-
-        nfo_path = generate_nfo(video, season=1, episode=5, dry_run=True)
-
-        # Dry run still processes but doesn't create
-        nfo = video.with_suffix(".nfo")
-        assert not nfo.exists()
-
-    def test_skips_existing(self, tmp_path: Path) -> None:
-        """Test skipping existing NFO."""
-        video = tmp_path / "episode.mkv"
-        video.touch()
-
-        nfo = video.with_suffix(".nfo")
-        nfo.write_text("existing")
-
-        result = generate_nfo(video, season=1, episode=5, dry_run=False)
-
-        assert result is None
-        assert nfo.read_text() == "existing"
