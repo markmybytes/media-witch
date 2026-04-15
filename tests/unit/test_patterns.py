@@ -153,7 +153,9 @@ class TestNaturalSortProperties:
         st.lists(st.integers(min_value=1, max_value=10000),
                  min_size=2, max_size=20, unique=True)
     )
-    def test_episodes_sort_numerically_not_lexically(self, prefix: str, episodes: list[int]) -> None:
+    def test_episodes_sort_numerically_not_lexically(
+        self, prefix: str, episodes: list[int]
+    ) -> None:
         """Episode numbers should sort numerically (e.g., E2 before E10)."""
         paths = [Path(f"{prefix}.S01E{ep}.mkv") for ep in episodes]
 

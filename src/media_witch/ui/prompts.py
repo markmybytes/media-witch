@@ -87,7 +87,7 @@ def ask_extras_classification(items: list[Path], defaults: list[bool]) -> list[b
     choices = [
         questionary.Choice(
             title=f"{p.name} [{'EXTRA' if d else 'PRIMARY'}]", value=i, checked=d)
-        for i, (p, d) in enumerate(zip(items, defaults))
+        for i, (p, d) in enumerate(zip(items, defaults, strict=False))
     ]
     selected = set(questionary.checkbox(
         "Select EXTRAS", choices=choices).unsafe_ask() or [])
@@ -112,7 +112,9 @@ def ask_nfo_overrides(videos: list[Path], season: int) -> dict[int, int]:
         print(f"  {i:2d}. {p.name:40s} → Episode {defaults[p]}")
     print()
 
-    if not (questionary.confirm("Override any episode numbers?", default=False).unsafe_ask() or False):
+    if not questionary.confirm(
+        "Override any episode numbers?", default=False
+    ).unsafe_ask():
         return {}
 
     print("\n" + "─" * 60)

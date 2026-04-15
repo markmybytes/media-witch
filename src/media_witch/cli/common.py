@@ -37,7 +37,7 @@ locale_map_option = click.option(
 )
 
 
-def common_options(f):
+def common_options(f):  # type: ignore[no-untyped-def]
     """Decorator to add common options to commands."""
     f = dry_run_option(f)
     f = verbose_option(f)

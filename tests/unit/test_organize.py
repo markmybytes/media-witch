@@ -89,7 +89,7 @@ class TestOrganizeTvShow:
         config = OrganizeConfig(mode="show", season=1, dry_run=False)
         fops = FileOps(dry_run=False)
 
-        result = organize_tv_show(tmp_path, 1, config, fops)
+        organize_tv_show(tmp_path, 1, config, fops)
 
         # Check files moved to Season 1 folder
         season_dir = tmp_path / "Season 1"
@@ -113,7 +113,7 @@ class TestOrganizeTvShow:
                                 dry_run=False, root_dir=root_dir)
         fops = FileOps(dry_run=False)
 
-        result = organize_tv_show(source_dir, 2, config, fops)
+        organize_tv_show(source_dir, 2, config, fops)
 
         # Season folder should be created at root_dir, not source_dir
         season_dir = root_dir / "Season 2"
@@ -130,7 +130,7 @@ class TestOrganizeTvShow:
         config = OrganizeConfig(mode="show", season=1, dry_run=False)
         fops = FileOps(dry_run=False)
 
-        result = organize_tv_show(tmp_path, 1, config, fops)
+        organize_tv_show(tmp_path, 1, config, fops)
 
         # Primary video in Season folder
         assert (tmp_path / "Season 1" / "Show.S01E01.mkv").exists()
@@ -155,7 +155,7 @@ class TestOrganizeTvShow:
         )
         fops = FileOps(dry_run=False)
 
-        result = organize_tv_show(tmp_path, 1, config, fops)
+        organize_tv_show(tmp_path, 1, config, fops)
 
         # file1 should be in Season 1 (primary)
         assert (tmp_path / "Season 1" / "Show.S01E01.mkv").exists()
@@ -174,7 +174,7 @@ class TestOrganizeTvShow:
                                 dry_run=False, extras_flags=[False])
         fops = FileOps(dry_run=False)
 
-        result = organize_tv_show(tmp_path, 1, config, fops)
+        organize_tv_show(tmp_path, 1, config, fops)
 
         # Video should be flattened into Season 1
         assert (tmp_path / "Season 1" / "Show.S01E01.mkv").exists()
@@ -190,7 +190,7 @@ class TestOrganizeTvShow:
         config = OrganizeConfig(mode="show", season=1, dry_run=False)
         fops = FileOps(dry_run=False)
 
-        result = organize_tv_show(tmp_path, 1, config, fops)
+        organize_tv_show(tmp_path, 1, config, fops)
 
         # Directory moved to EXTRA atomically
         moved_dir = tmp_path / "EXTRA" / "Season 1" / "BonusContent"
@@ -211,7 +211,7 @@ class TestOrganizeTvShow:
                                 dry_run=False, locale_mapper=mapper)
         fops = FileOps(dry_run=False)
 
-        result = organize_tv_show(tmp_path, 1, config, fops)
+        organize_tv_show(tmp_path, 1, config, fops)
 
         # Subtitle should be renamed and moved
         season_dir = tmp_path / "Season 1"
@@ -273,7 +273,7 @@ class TestOrganizeTvShow:
         )
         fops = FileOps(dry_run=False)
 
-        result = organize_tv_show(tmp_path, 1, config, fops)
+        organize_tv_show(tmp_path, 1, config, fops)
 
         # Check NFO content
         season_dir = tmp_path / "Season 1"
@@ -291,7 +291,7 @@ class TestOrganizeTvShow:
         config = OrganizeConfig(mode="show", season=1, dry_run=True)
         fops = FileOps(dry_run=True)
 
-        result = organize_tv_show(tmp_path, 1, config, fops)
+        organize_tv_show(tmp_path, 1, config, fops)
 
         # Files should not be moved
         assert video.exists()
@@ -316,7 +316,7 @@ class TestOrganizeTvShow:
                                 dry_run=False, extras_flags=[False])
         fops = FileOps(dry_run=False)
 
-        result = organize_tv_show(tmp_path, 1, config, fops)
+        organize_tv_show(tmp_path, 1, config, fops)
 
         season_dir = tmp_path / "Season 1"
         assert (season_dir / "audio.mka").exists()
@@ -334,7 +334,7 @@ class TestOrganizeMovie:
             mode="movie", dry_run=False, extras_flags=[False])
         fops = FileOps(dry_run=False)
 
-        result = organize_movie(tmp_path, config, fops)
+        organize_movie(tmp_path, config, fops)
 
         # Video stays in place (moved to same directory)
         assert (tmp_path / "Movie.2024.mkv").exists()
@@ -350,7 +350,7 @@ class TestOrganizeMovie:
             mode="movie", dry_run=False, extras_flags=[True, False])
         fops = FileOps(dry_run=False)
 
-        result = organize_movie(tmp_path, config, fops)
+        organize_movie(tmp_path, config, fops)
 
         # Main video in place
         assert (tmp_path / "Movie.2024.mkv").exists()
@@ -369,7 +369,7 @@ class TestOrganizeMovie:
             mode="movie", dry_run=False, extras_flags=[False])
         fops = FileOps(dry_run=False)
 
-        result = organize_movie(tmp_path, config, fops)
+        organize_movie(tmp_path, config, fops)
 
         # Video flattened to parent directory
         assert (tmp_path / "Movie.2024.mkv").exists()
@@ -385,7 +385,7 @@ class TestOrganizeMovie:
         config = OrganizeConfig(mode="movie", dry_run=False)
         fops = FileOps(dry_run=False)
 
-        result = organize_movie(tmp_path, config, fops)
+        organize_movie(tmp_path, config, fops)
 
         # Directory moved atomically
         moved_dir = tmp_path / "EXTRA" / "Extras"
@@ -406,7 +406,7 @@ class TestOrganizeMovie:
             mode="movie", dry_run=False, locale_mapper=mapper, extras_flags=[False, False])
         fops = FileOps(dry_run=False)
 
-        result = organize_movie(tmp_path, config, fops)
+        organize_movie(tmp_path, config, fops)
 
         # Subtitle renamed
         assert (tmp_path / "Movie.2024.zh.srt").exists()
@@ -433,7 +433,7 @@ class TestOrganizeMovie:
             mode="movie", dry_run=True, extras_flags=[False])
         fops = FileOps(dry_run=True)
 
-        result = organize_movie(tmp_path, config, fops)
+        organize_movie(tmp_path, config, fops)
 
         # File should still exist in original location
         assert video.exists()
@@ -450,7 +450,7 @@ class TestOrganizeMovie:
             mode="movie", dry_run=False, extras_flags=[False, True])
         fops = FileOps(dry_run=False)
 
-        result = organize_movie(tmp_path, config, fops)
+        organize_movie(tmp_path, config, fops)
 
         # file1 stays in place
         assert (tmp_path / "file1.mkv").exists()
@@ -479,7 +479,7 @@ class TestOrganizeDirectory:
 
         config = OrganizeConfig(mode="show", season=1, dry_run=False)
 
-        result = organize_directory(tmp_path, config)
+        organize_directory(tmp_path, config)
 
         season_dir = tmp_path / "Season 1"
         assert season_dir.exists()
@@ -493,7 +493,7 @@ class TestOrganizeDirectory:
         config = OrganizeConfig(
             mode="movie", dry_run=False, extras_flags=[False])
 
-        result = organize_directory(tmp_path, config)
+        organize_directory(tmp_path, config)
 
         assert (tmp_path / "Movie.2024.mkv").exists()
 
@@ -538,7 +538,7 @@ class TestOrganizeDirectory:
 
         config = OrganizeConfig(mode="show", season=1, dry_run=True)
 
-        result = organize_directory(tmp_path, config)
+        organize_directory(tmp_path, config)
 
         # No actual changes
         assert video.exists()

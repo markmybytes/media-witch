@@ -83,24 +83,24 @@ def bdecode(data: bytes) -> Any:
 
             # List: l<items>e
             elif c == ord('l'):
-                result = []
+                list_result: list[Any] = []
                 i += 1
                 while data[i] != ord('e'):
                     item, i = decode_any(i)
-                    result.append(item)
-                return result, i + 1
+                    list_result.append(item)
+                return list_result, i + 1
 
             # Dictionary: d<key><value>...e
             elif c == ord('d'):
-                result: dict[bytes, Any] = {}
+                dict_result: dict[bytes, Any] = {}
                 i += 1
                 while data[i] != ord('e'):
                     key, i = decode_any(i)
                     if not isinstance(key, bytes):
                         raise ValueError("Dictionary keys must be bytes")
                     value, i = decode_any(i)
-                    result[key] = value
-                return result, i + 1
+                    dict_result[key] = value
+                return dict_result, i + 1
 
             # String: <length>:<data>
             elif 48 <= c <= 57:  # ASCII digits 0-9

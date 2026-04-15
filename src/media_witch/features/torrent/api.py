@@ -71,7 +71,7 @@ def create_from_torrent(
             print(f"Total size: {info.total_size:,} bytes\n")
 
         # Create files
-        for path_parts, size in info.files:
+        for path_parts, _size in info.files:
             try:
                 # Build path using pathlib
                 file_path = base_dir

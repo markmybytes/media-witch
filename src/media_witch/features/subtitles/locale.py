@@ -125,7 +125,7 @@ def load_csv_rules(csv_path: Path | None) -> list[Rule]:
     """
     if not csv_path or not csv_path.exists():
         return []
-    rules = []
+    rules: list[Rule] = []
     with csv_path.open("r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         if not reader.fieldnames:

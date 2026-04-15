@@ -98,7 +98,7 @@ def organize_tv_show(
     files_moved = []
     nfos_created = []
     errors = []
-    skipped = []
+    skipped: list[Path] = []
 
     # Classify extras (use provided flags or fall back to automatic)
     if config.extras_flags is not None:
@@ -114,7 +114,7 @@ def organize_tv_show(
     moved_video_dsts: list[Path] = []
 
     # Process items
-    for item, is_ex in zip(items, flags):
+    for item, is_ex in zip(items, flags, strict=False):
         try:
             if item.is_dir():
                 if is_ex:
@@ -220,7 +220,7 @@ def organize_movie(
     aq = ActionQueue(fops)
     files_moved = []
     errors = []
-    skipped = []
+    skipped: list[Path] = []
 
     # Classify extras (use provided flags or fall back to automatic)
     if config.extras_flags is not None:
@@ -232,7 +232,7 @@ def organize_movie(
     moved_video_dsts: list[Path] = []
 
     # Process items
-    for item, is_ex in zip(items, flags):
+    for item, is_ex in zip(items, flags, strict=False):
         try:
             if item.is_dir():
                 if is_ex:

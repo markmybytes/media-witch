@@ -2,7 +2,8 @@
 
 from pathlib import Path
 
-from media_witch.features.nfo.api import NFOConfig, generate_episode_nfos, generate_nfo_content
+from media_witch.features.nfo.api import (NFOConfig, generate_episode_nfos,
+                                          generate_nfo_content)
 
 
 class TestGenerateNfoContent:
@@ -71,7 +72,7 @@ class TestGenerateEpisodeNfos:
             v.touch()
 
         config = NFOConfig(season=2, episode_start=5, dry_run=False)
-        result = generate_episode_nfos(videos, config)
+        generate_episode_nfos(videos, config)
 
         nfo1 = videos[0].with_suffix(".nfo")
         nfo2 = videos[1].with_suffix(".nfo")
@@ -99,7 +100,7 @@ class TestGenerateEpisodeNfos:
             episode_overrides={2: 10},
             dry_run=False
         )
-        result = generate_episode_nfos(videos, config)
+        generate_episode_nfos(videos, config)
 
         nfo1 = videos[0].with_suffix(".nfo")
         nfo2 = videos[1].with_suffix(".nfo")
@@ -115,7 +116,7 @@ class TestGenerateEpisodeNfos:
         videos[0].touch()
 
         config = NFOConfig(season=1, episode_start=1, dry_run=True)
-        result = generate_episode_nfos(videos, config)
+        generate_episode_nfos(videos, config)
 
         nfo = videos[0].with_suffix(".nfo")
         assert not nfo.exists()

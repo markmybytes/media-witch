@@ -152,7 +152,6 @@ def rename_subtitles(
     """
     fops = FileOps(dry_run=config.dry_run)
     service = SubtitleService(config.locale_mapper, fops)
-    aq = ActionQueue(fops)
 
     renamed = []
     skipped = []

@@ -234,7 +234,7 @@ class TestParseCliRulesProperties:
         rules = parse_cli_rules(specs)
 
         assert len(rules) == len(rule_data)
-        for rule, (expected_s, expected_t, expected_c) in zip(rules, rule_data):
+        for rule, (expected_s, expected_t, expected_c) in zip(rules, rule_data, strict=False):
             assert rule.source == expected_s
             assert rule.target == expected_t
             assert rule.case_sensitive == expected_c
@@ -295,7 +295,7 @@ class TestLoadCsvRulesProperties:
             rules = load_csv_rules(csv_file)
 
             assert len(rules) == len(rule_data)
-            for rule, (expected_s, expected_t, expected_c) in zip(rules, rule_data):
+            for rule, (expected_s, expected_t, expected_c) in zip(rules, rule_data, strict=False):
                 assert rule.source == expected_s
                 assert rule.target == expected_t
                 assert rule.case_sensitive == expected_c
@@ -305,7 +305,9 @@ class TestLoadCsvRulesProperties:
         """CSV parsing should handle malformed input gracefully."""
         import tempfile
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False, encoding='utf-8') as f:
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.csv', delete=False, encoding='utf-8'
+        ) as f:
             try:
                 f.write(content)
                 f.flush()
@@ -320,7 +322,7 @@ class TestLoadCsvRulesProperties:
             finally:
                 try:
                     Path(f.name).unlink()
-                except:
+                except OSError:
                     pass
 
     def test_csv_nonexistent_file_returns_empty(self) -> None:

@@ -94,7 +94,7 @@ class TestCreateFromTorrentSingleFile:
         output_dir.mkdir()
         config = TorrentConfig(output_dir=output_dir)
 
-        result = create_from_torrent(torrent_path, config)
+        create_from_torrent(torrent_path, config)
 
         created_file = output_dir / "test" / "test.txt"
         assert created_file.exists()
@@ -147,7 +147,7 @@ class TestCreateFromTorrentMultiFile:
         output_dir.mkdir()
         config = TorrentConfig(output_dir=output_dir)
 
-        result = create_from_torrent(torrent_path, config)
+        create_from_torrent(torrent_path, config)
 
         base = output_dir / "nested"
         assert (base / "dir" / "file1").exists()
@@ -169,7 +169,7 @@ class TestCreateFromTorrentMultiFile:
         output_dir.mkdir()
         config = TorrentConfig(output_dir=output_dir)
 
-        result = create_from_torrent(torrent_path, config)
+        create_from_torrent(torrent_path, config)
 
         deep_file = output_dir / "deep" / "a" / "b" / "c" / "d" / "file.txt"
         assert deep_file.exists()
@@ -190,7 +190,7 @@ class TestCreateFromTorrentMultiFile:
         output_dir.mkdir()
         config = TorrentConfig(output_dir=output_dir)
 
-        result = create_from_torrent(torrent_path, config)
+        create_from_torrent(torrent_path, config)
 
         dir_path = output_dir / "samedir" / "dir"
         assert (dir_path / "file1").exists()
@@ -262,7 +262,7 @@ class TestCreateFromTorrentVerbose:
         output_dir.mkdir()
         config = TorrentConfig(output_dir=output_dir, verbose=True)
 
-        result = create_from_torrent(torrent_path, config)
+        create_from_torrent(torrent_path, config)
 
         captured = capsys.readouterr()
         assert "Creating fake files" in captured.out
@@ -279,7 +279,7 @@ class TestCreateFromTorrentVerbose:
         output_dir.mkdir()
         config = TorrentConfig(output_dir=output_dir, verbose=False)
 
-        result = create_from_torrent(torrent_path, config)
+        create_from_torrent(torrent_path, config)
 
         captured = capsys.readouterr()
         assert captured.out == ""

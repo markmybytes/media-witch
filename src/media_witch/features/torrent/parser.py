@@ -23,7 +23,10 @@ class TorrentInfo:
     @property
     def name(self) -> str:
         """Get torrent name."""
-        return self._info[b'name'].decode('utf-8', errors='replace')
+        name_bytes = self._info[b'name']
+        if isinstance(name_bytes, bytes):
+            return name_bytes.decode('utf-8', errors='replace')
+        return str(name_bytes)
 
     @property
     def is_single_file(self) -> bool:
@@ -52,8 +55,12 @@ class TorrentInfo:
     def total_size(self) -> int:
         """Get total size of all files in bytes."""
         if self.is_single_file:
-            return self._info[b'length']
-        return sum(f[b'length'] for f in self._info[b'files'])
+            length = self._info[b'length']
+            return int(length) if isinstance(length, (int, float)) else 0
+        return sum(
+            int(f[b'length']) if isinstance(f[b'length'], (int, float)) else 0
+            for f in self._info[b'files']
+        )
 
 
 def parse_torrent(torrent_path: Path) -> TorrentInfo:

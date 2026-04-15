@@ -181,7 +181,9 @@ class TestMultiFileTorrentProperties:
         """File paths should be decoded from bytes to str."""
         info = TorrentInfo(torrent_data)
 
-        for (path_parts, _), file_data in zip(info.files, torrent_data[b"info"][b"files"]):
+        for (path_parts, _), file_data in zip(
+            info.files, torrent_data[b"info"][b"files"], strict=False
+        ):
             assert all(isinstance(part, str) for part in path_parts)
 
             expected_path = [
@@ -195,7 +197,9 @@ class TestMultiFileTorrentProperties:
         """File sizes should match input data."""
         info = TorrentInfo(torrent_data)
 
-        for (_, size), file_data in zip(info.files, torrent_data[b"info"][b"files"]):
+        for (_, size), file_data in zip(
+            info.files, torrent_data[b"info"][b"files"], strict=False
+        ):
             assert size == file_data[b"length"]
 
     @given(st.integers(min_value=0, max_value=1000))
