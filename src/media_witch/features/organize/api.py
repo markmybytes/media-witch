@@ -32,6 +32,7 @@ class OrganizeConfig:
                  If set, Season folders are created at root_dir instead of path
         remove_unmapped_subs: Whether to remove subtitles not in mapping target locales
     """
+
     mode: Literal["show", "movie", "skip"]
     season: int | None = None
     locale_mapper: LocaleMapper | None = None
@@ -54,6 +55,7 @@ class OrganizeResult:
         errors: List of error messages
         skipped: List of skipped files
     """
+
     files_moved: list[tuple[Path, Path]]
     nfos_created: list[Path]
     errors: list[str]
@@ -119,19 +121,21 @@ def organize_tv_show(
             if item.is_dir():
                 if is_ex:
                     dst = extra_dir / item.name
-                    aq.add(fops.move_dir_atomic, item, dst,
-                           desc=f"[MOVE-DIR] {item} -> {dst}")
+                    aq.add(fops.move_dir_atomic, item, dst, desc=f"[MOVE-DIR] {item} -> {dst}")
                     files_moved.append((item, dst))
                 else:
-                    aq.add(fops.move_dir_contents_to, item, season_dir,
-                           desc=f"[FLATTEN] {item} -> {season_dir}")
+                    aq.add(
+                        fops.move_dir_contents_to,
+                        item,
+                        season_dir,
+                        desc=f"[FLATTEN] {item} -> {season_dir}",
+                    )
                     files_moved.append((item, season_dir))
                 continue
 
             if is_ex:
                 dst = extra_dir / item.name
-                aq.add(fops.move_file, item, dst,
-                       desc=f"[MOVE] {item} -> {dst}")
+                aq.add(fops.move_file, item, dst, desc=f"[MOVE] {item} -> {dst}")
                 files_moved.append((item, dst))
                 continue
 
@@ -140,16 +144,14 @@ def organize_tv_show(
 
             if is_video(item) or is_audio(item):
                 dst = season_dir / item.name
-                aq.add(fops.move_file, item, dst,
-                       desc=f"[MOVE] {item} -> {dst}")
+                aq.add(fops.move_file, item, dst, desc=f"[MOVE] {item} -> {dst}")
                 files_moved.append((item, dst))
                 if is_video(dst):
                     moved_video_dsts.append(dst)
                 continue
 
             dst = season_dir / item.name
-            aq.add(fops.move_file, item, dst,
-                   desc=f"[MOVE] {item} -> {dst}")
+            aq.add(fops.move_file, item, dst, desc=f"[MOVE] {item} -> {dst}")
             files_moved.append((item, dst))
 
         except Exception as e:
@@ -163,11 +165,9 @@ def organize_tv_show(
             remove_unmapped=config.remove_unmapped_subs,
         )
         for vdst in sorted(moved_video_dsts, key=natural_sort_key):
-            subs = [p for p in path.iterdir() if p.is_file()
-                    and is_subtitle(p)]
+            subs = [p for p in path.iterdir() if p.is_file() and is_subtitle(p)]
             if season_dir.exists():
-                subs += [p for p in season_dir.iterdir()
-                         if p.is_file() and is_subtitle(p)]
+                subs += [p for p in season_dir.iterdir() if p.is_file() and is_subtitle(p)]
             if subs:
                 rename_subtitles(subs, vdst, sub_config)
 
@@ -183,7 +183,7 @@ def organize_tv_show(
             season=season,
             episode_start=1,
             episode_overrides=config.episode_overrides or {},
-            dry_run=config.dry_run
+            dry_run=config.dry_run,
         )
         nfo_result = generate_episode_nfos(videos_sorted, nfo_config)
         nfos_created.extend(nfo_result.created)
@@ -237,19 +237,18 @@ def organize_movie(
             if item.is_dir():
                 if is_ex:
                     dst = extra_dir / item.name
-                    aq.add(fops.move_dir_atomic, item, dst,
-                           desc=f"[MOVE-DIR] {item} -> {dst}")
+                    aq.add(fops.move_dir_atomic, item, dst, desc=f"[MOVE-DIR] {item} -> {dst}")
                     files_moved.append((item, dst))
                 else:
-                    aq.add(fops.move_dir_contents_to, item, path,
-                           desc=f"[FLATTEN] {item} -> {path}")
+                    aq.add(
+                        fops.move_dir_contents_to, item, path, desc=f"[FLATTEN] {item} -> {path}"
+                    )
                     files_moved.append((item, path))
                 continue
 
             if is_ex:
                 dst = extra_dir / item.name
-                aq.add(fops.move_file, item, dst,
-                       desc=f"[MOVE] {item} -> {dst}")
+                aq.add(fops.move_file, item, dst, desc=f"[MOVE] {item} -> {dst}")
                 files_moved.append((item, dst))
                 continue
 
@@ -258,16 +257,14 @@ def organize_movie(
 
             if is_video(item) or is_audio(item):
                 dst = path / item.name
-                aq.add(fops.move_file, item, dst,
-                       desc=f"[MOVE] {item} -> {dst}")
+                aq.add(fops.move_file, item, dst, desc=f"[MOVE] {item} -> {dst}")
                 files_moved.append((item, dst))
                 if is_video(dst):
                     moved_video_dsts.append(dst)
                 continue
 
             dst = path / item.name
-            aq.add(fops.move_file, item, dst,
-                   desc=f"[MOVE] {item} -> {dst}")
+            aq.add(fops.move_file, item, dst, desc=f"[MOVE] {item} -> {dst}")
             files_moved.append((item, dst))
 
         except Exception as e:

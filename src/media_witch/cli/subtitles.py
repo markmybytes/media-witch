@@ -50,8 +50,7 @@ def subtitles_command(
                 click.echo(f"Skipping {path}: not a subtitle file", err=True)
                 continue
         elif path.is_dir():
-            subtitles = [p for p in path.iterdir() if p.is_file()
-                         and is_subtitle(p)]
+            subtitles = [p for p in path.iterdir() if p.is_file() and is_subtitle(p)]
             videos = [p for p in path.iterdir() if p.is_file() and is_video(p)]
         else:
             continue
@@ -98,8 +97,7 @@ def subtitles_command(
                         click.echo(f"  [REMOVE] {sub.name}")
 
             except Exception as e:
-                click.echo(
-                    f"Error processing subtitles for {video}: {e}", err=True)
+                click.echo(f"Error processing subtitles for {video}: {e}", err=True)
                 continue
 
         if not quiet:

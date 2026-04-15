@@ -18,6 +18,7 @@ class NFOConfig:
         episode_overrides: Optional dict mapping file index to episode number
         dry_run: If True, preview changes without executing
     """
+
     season: int
     episode_start: int = 1
     episode_overrides: dict[int, int] | None = None
@@ -33,6 +34,7 @@ class NFOResult:
         skipped: List of files that were skipped
         errors: List of error messages
     """
+
     created: list[Path]
     skipped: list[Path]
     errors: list[str]
@@ -55,11 +57,11 @@ def generate_nfo_content(
     """
     return (
         '<?xml version="1.0" encoding="utf-8" standalone="yes"?>'
-        '<episodedetails>'
-        f'<title>{title}</title>'
-        f'<episode>{episode}</episode>'
-        f'<season>{season}</season>'
-        '</episodedetails>'
+        "<episodedetails>"
+        f"<title>{title}</title>"
+        f"<episode>{episode}</episode>"
+        f"<season>{season}</season>"
+        "</episodedetails>"
     )
 
 

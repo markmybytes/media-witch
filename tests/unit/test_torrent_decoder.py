@@ -1,9 +1,11 @@
 """Property-based tests for bencode encoder and decoder."""
 
+from typing import cast
+
 import pytest
 from hypothesis import assume, given
 from hypothesis import strategies as st
-from hypothesis.strategies import composite
+from hypothesis.strategies import DrawFn, composite
 
 from media_witch.features.torrent.decoder import bdecode, bencode
 
@@ -57,7 +59,7 @@ class TestStringProperties:
         """Any string should encode and decode to bytes."""
         encoded = bencode(s)
         decoded = bdecode(encoded)
-        assert decoded == s.encode('utf-8')
+        assert decoded == s.encode("utf-8")
         assert isinstance(decoded, bytes)
 
     @given(st.binary())
@@ -117,12 +119,11 @@ class TestListProperties:
 class TestDictProperties:
     """Property-based tests for dictionary encoding/decoding."""
 
-    @given(st.dictionaries(
-        keys=st.binary(min_size=1, max_size=50),
-        values=st.integers(),
-        min_size=0,
-        max_size=50
-    ))
+    @given(
+        st.dictionaries(
+            keys=st.binary(min_size=1, max_size=50), values=st.integers(), min_size=0, max_size=50
+        )
+    )
     def test_dict_roundtrip(self, d: dict[bytes, int]) -> None:
         """Any dictionary with bytes keys should roundtrip correctly."""
         encoded = bencode(d)
@@ -131,42 +132,42 @@ class TestDictProperties:
         assert isinstance(decoded, dict)
         assert len(decoded) == len(d)
 
-    @given(st.dictionaries(
-        keys=st.text(min_size=1, max_size=50),
-        values=st.integers(),
-        min_size=0,
-        max_size=20
-    ))
+    @given(
+        st.dictionaries(
+            keys=st.text(min_size=1, max_size=50), values=st.integers(), min_size=0, max_size=20
+        )
+    )
     def test_dict_with_str_keys_roundtrip(self, d: dict[str, int]) -> None:
         """Dictionaries with str keys should encode to bytes keys."""
         encoded = bencode(d)
         decoded = bdecode(encoded)
         # Keys should be converted to bytes
-        expected = {k.encode('utf-8'): v for k, v in d.items()}
+        expected = {k.encode("utf-8"): v for k, v in d.items()}
         assert decoded == expected
 
-    @given(st.dictionaries(
-        keys=st.binary(min_size=1, max_size=30),
-        values=st.one_of(st.integers(), st.binary(),
-                         st.lists(st.integers(), max_size=10)),
-        min_size=0,
-        max_size=20
-    ))
+    @given(
+        st.dictionaries(
+            keys=st.binary(min_size=1, max_size=30),
+            values=st.one_of(st.integers(), st.binary(), st.lists(st.integers(), max_size=10)),
+            min_size=0,
+            max_size=20,
+        )
+    )
     def test_dict_with_mixed_values_roundtrip(self, d: dict) -> None:
         """Dictionaries with mixed value types should roundtrip correctly."""
         encoded = bencode(d)
         decoded = bdecode(encoded)
         assert decoded == d
 
-    @given(st.dictionaries(
-        keys=st.binary(min_size=1, max_size=20),
-        values=st.dictionaries(
+    @given(
+        st.dictionaries(
             keys=st.binary(min_size=1, max_size=20),
-            values=st.integers(),
-            max_size=5
-        ),
-        max_size=10
-    ))
+            values=st.dictionaries(
+                keys=st.binary(min_size=1, max_size=20), values=st.integers(), max_size=5
+            ),
+            max_size=10,
+        )
+    )
     def test_nested_dict_roundtrip(self, d: dict) -> None:
         """Nested dictionaries should roundtrip correctly."""
         encoded = bencode(d)
@@ -178,12 +179,11 @@ class TestDictProperties:
         assert bdecode(b"de") == {}
         assert bencode({}) == b"de"
 
-    @given(st.dictionaries(
-        keys=st.binary(min_size=1, max_size=20),
-        values=st.integers(),
-        min_size=2,
-        max_size=20
-    ))
+    @given(
+        st.dictionaries(
+            keys=st.binary(min_size=1, max_size=20), values=st.integers(), min_size=2, max_size=20
+        )
+    )
     def test_dict_keys_are_sorted(self, d: dict[bytes, int]) -> None:
         """Bencode requires dictionary keys to be sorted."""
         encoded = bencode(d)
@@ -194,47 +194,52 @@ class TestDictProperties:
 
 
 @composite
-def bencode_data(draw, max_depth: int = 4):
+def bencode_data(draw: DrawFn, max_depth: int = 4) -> int | bytes | list | dict:
     """Strategy for generating arbitrary bencode-compatible structures."""
     if max_depth == 0:
         # Base case: only primitives
-        return draw(st.one_of(
-            st.integers(min_value=-(2**31), max_value=2**31 - 1),
-            st.binary(max_size=100)
-        ))
+        return draw(
+            st.one_of(  # type: ignore[no-any-return]
+                st.integers(min_value=-(2**31), max_value=2**31 - 1), st.binary(max_size=100)
+            )
+        )
 
     # Recursive case: primitives, lists, or dicts
     primitive = st.one_of(
-        st.integers(min_value=-(2**31), max_value=2**31 - 1),
-        st.binary(max_size=50)
+        st.integers(min_value=-(2**31), max_value=2**31 - 1), st.binary(max_size=50)
     )
 
     # Recursively generate sub-structures
-    sub_structure = bencode_data(max_depth - 1)
+    sub_structure = bencode_data(max_depth - 1)  # type: ignore[arg-type]
 
-    return draw(st.one_of(
-        primitive,
-        st.lists(sub_structure, max_size=10),
-        st.dictionaries(
-            keys=st.binary(min_size=1, max_size=20),
-            values=sub_structure,
-            max_size=10
-        )
-    ))
+    return cast(
+        int | bytes | list | dict,
+        draw(
+            st.one_of(  # type: ignore[no-any-return]
+                primitive,
+                st.lists(sub_structure, max_size=10),
+                st.dictionaries(
+                    keys=st.binary(min_size=1, max_size=20),
+                    values=sub_structure,
+                    max_size=10,
+                ),
+            )
+        ),
+    )
 
 
 class TestComplexStructures:
     """Property-based tests for complex nested structures."""
 
     @given(bencode_data())
-    def test_arbitrary_structure_roundtrip(self, data) -> None:
+    def test_arbitrary_structure_roundtrip(self, data: int | bytes | list | dict) -> None:
         """Any bencode-compatible structure should roundtrip correctly."""
         encoded = bencode(data)
         decoded = bdecode(encoded)
         assert decoded == data
 
     @given(bencode_data(max_depth=6))
-    def test_deeply_nested_structures(self, data) -> None:
+    def test_deeply_nested_structures(self, data: int | bytes | list | dict) -> None:
         """Deeply nested structures should roundtrip correctly."""
         encoded = bencode(data)
         decoded = bdecode(encoded)
@@ -249,7 +254,7 @@ class TestComplexStructures:
                 b"length": 1073741824,
                 b"piece length": 262144,
                 b"pieces": b"x" * 20,  # Normally 20-byte SHA1 hashes
-            }
+            },
         }
         encoded = bencode(data)
         decoded = bdecode(encoded)
@@ -327,7 +332,7 @@ class TestBencodeInvariants:
     """Tests for bencode encoding/decoding invariants."""
 
     @given(bencode_data())
-    def test_encode_decode_identity(self, data) -> None:
+    def test_encode_decode_identity(self, data: int | bytes | list | dict) -> None:
         """encode(decode(encode(x))) == encode(x)."""
         encoded = bencode(data)
         decoded = bdecode(encoded)
@@ -335,7 +340,7 @@ class TestBencodeInvariants:
         assert re_encoded == encoded
 
     @given(bencode_data())
-    def test_decode_encode_identity(self, data) -> None:
+    def test_decode_encode_identity(self, data: int | bytes | list | dict) -> None:
         """decode(encode(x)) == x for all valid bencode data."""
         encoded = bencode(data)
         decoded = bdecode(encoded)
@@ -359,12 +364,11 @@ class TestBencodeInvariants:
         decoded = bdecode(encoded)
         assert len(decoded) == len(lst)
 
-    @given(st.dictionaries(
-        keys=st.binary(min_size=1, max_size=20),
-        values=st.integers(),
-        min_size=0,
-        max_size=50
-    ))
+    @given(
+        st.dictionaries(
+            keys=st.binary(min_size=1, max_size=20), values=st.integers(), min_size=0, max_size=50
+        )
+    )
     def test_dict_size_preserved(self, d: dict) -> None:
         """Number of dict entries should be preserved through roundtrip."""
         encoded = bencode(d)

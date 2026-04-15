@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from hypothesis import assume, given
 from hypothesis import strategies as st
-from hypothesis.strategies import composite
+from hypothesis.strategies import DrawFn, composite
 
 from media_witch.features.subtitles.locale import (
     LocaleMapper,
@@ -18,15 +18,15 @@ from media_witch.features.subtitles.locale import (
 
 # Custom strategies
 @composite
-def locale_code(draw, min_size: int = 1, max_size: int = 10):
+def locale_code(draw: DrawFn, min_size: int = 1, max_size: int = 10) -> str:
     """Generate realistic locale codes (ASCII only to avoid encoding issues)."""
-    return draw(
+    return draw(  # type: ignore[no-any-return]
         st.text(
             alphabet=st.characters(
                 min_codepoint=0x30,  # '0'
                 max_codepoint=0x7A,  # 'z'
                 whitelist_categories=("Ll", "Lu", "Nd"),
-                blacklist_characters=",\t\n\r"
+                blacklist_characters=",\t\n\r",
             ),
             min_size=min_size,
             max_size=max_size,
@@ -35,7 +35,7 @@ def locale_code(draw, min_size: int = 1, max_size: int = 10):
 
 
 @composite
-def mapping_rule(draw):
+def mapping_rule(draw: DrawFn) -> Rule:
     """Generate a valid mapping rule."""
     source = draw(locale_code())
     target = draw(locale_code())
@@ -44,7 +44,7 @@ def mapping_rule(draw):
 
 
 @composite
-def csv_content(draw, valid: bool = True):
+def csv_content(draw: DrawFn, valid: bool = True) -> str:
     """Generate CSV content for testing (ASCII only to avoid encoding issues)."""
     if valid:
         num_rules = draw(st.integers(min_value=0, max_value=20))
@@ -53,13 +53,14 @@ def csv_content(draw, valid: bool = True):
         for _ in range(num_rules):
             source = draw(locale_code())
             target = draw(locale_code())
-            case_sensitive = draw(st.sampled_from(
-                ["true", "false", "1", "0", "yes", "no", "y", "n"]))
+            case_sensitive = draw(
+                st.sampled_from(["true", "false", "1", "0", "yes", "no", "y", "n"])
+            )
             lines.append(f"{source},{target},{case_sensitive}")
 
         return "\n".join(lines)
     else:
-        return draw(st.text(alphabet=st.characters(max_codepoint=0x7F), max_size=500))
+        return draw(st.text(alphabet=st.characters(max_codepoint=0x7F), max_size=500))  # type: ignore[no-any-return]
 
 
 # Tests for LocaleMapper
@@ -122,10 +123,8 @@ class TestLocaleMapperProperties:
         assume(len(source) > 0)
         assume(csv_target != cli_target)
 
-        csv_rules = [Rule(source=source, target=csv_target,
-                          case_sensitive=False)]
-        cli_rules = [Rule(source=source, target=cli_target,
-                          case_sensitive=False)]
+        csv_rules = [Rule(source=source, target=csv_target, case_sensitive=False)]
+        cli_rules = [Rule(source=source, target=cli_target, case_sensitive=False)]
 
         mapper = LocaleMapper(csv_rules=csv_rules, cli_rules=cli_rules)
         assert mapper.resolve(source) == cli_target
@@ -183,9 +182,7 @@ class TestParseCliRulesProperties:
         assert rules[0].case_sensitive == case_sensitive
 
     @given(
-        locale_code(),
-        locale_code(),
-        st.sampled_from(["true", "1", "yes", "y", "TRUE", "Yes", "Y"])
+        locale_code(), locale_code(), st.sampled_from(["true", "1", "yes", "y", "TRUE", "Yes", "Y"])
     )
     def test_parse_truthy_values(self, source: str, target: str, truthy: str) -> None:
         """Various truthy values should parse to case_sensitive=True."""
@@ -200,8 +197,7 @@ class TestParseCliRulesProperties:
     @given(
         locale_code(),
         locale_code(),
-        st.sampled_from(
-            ["false", "0", "no", "n", "FALSE", "No", "anything_else"])
+        st.sampled_from(["false", "0", "no", "n", "FALSE", "No", "anything_else"]),
     )
     def test_parse_falsy_values(self, source: str, target: str, falsy: str) -> None:
         """Non-truthy values should parse to case_sensitive=False."""
@@ -213,23 +209,19 @@ class TestParseCliRulesProperties:
 
         assert rules[0].case_sensitive is False
 
-    @given(st.lists(
-        st.tuples(locale_code(), locale_code(), st.booleans()),
-        min_size=1,
-        max_size=20
-    ))
+    @given(
+        st.lists(st.tuples(locale_code(), locale_code(), st.booleans()), min_size=1, max_size=20)
+    )
     def test_parse_multiple_rules(self, rule_data: list[tuple[str, str, bool]]) -> None:
         """Parsing multiple rules should preserve all of them."""
         rule_data = [
-            (s, t, c) for s, t, c in rule_data
+            (s, t, c)
+            for s, t, c in rule_data
             if "," not in s and "," not in t and len(s) > 0 and len(t) > 0
         ]
         assume(len(rule_data) > 0)
 
-        specs = [
-            f"{s},{t},{'true' if c else 'false'}"
-            for s, t, c in rule_data
-        ]
+        specs = [f"{s},{t},{'true' if c else 'false'}" for s, t, c in rule_data]
 
         rules = parse_cli_rules(specs)
 
@@ -239,9 +231,7 @@ class TestParseCliRulesProperties:
             assert rule.target == expected_t
             assert rule.case_sensitive == expected_c
 
-    @given(
-        st.text(max_size=50).filter(lambda x: x.count(",") != 2)
-    )
+    @given(st.text(max_size=50).filter(lambda x: x.count(",") != 2))
     def test_parse_invalid_format_raises_error(self, invalid_spec: str) -> None:
         """Invalid format should raise ValueError."""
         assume("," in invalid_spec or len(invalid_spec) > 0)
@@ -268,17 +258,16 @@ class TestParseCliRulesProperties:
 class TestLoadCsvRulesProperties:
     """Property-based tests for CSV rule loading."""
 
-    @given(st.lists(
-        st.tuples(locale_code(), locale_code(), st.booleans()),
-        min_size=0,
-        max_size=20
-    ))
+    @given(
+        st.lists(st.tuples(locale_code(), locale_code(), st.booleans()), min_size=0, max_size=20)
+    )
     def test_csv_roundtrip(self, rule_data: list[tuple[str, str, bool]]) -> None:
         """Rules should roundtrip through CSV correctly."""
         import tempfile
 
         rule_data = [
-            (s, t, c) for s, t, c in rule_data
+            (s, t, c)
+            for s, t, c in rule_data
             if len(s) > 0 and len(t) > 0 and "," not in s and "," not in t
         ]
 
@@ -290,7 +279,7 @@ class TestLoadCsvRulesProperties:
             for source, target, case_sensitive in rule_data:
                 case_str = "true" if case_sensitive else "false"
                 lines.append(f"{source},{target},{case_str}")
-            csv_file.write_text("\n".join(lines), encoding='utf-8')
+            csv_file.write_text("\n".join(lines), encoding="utf-8")
 
             rules = load_csv_rules(csv_file)
 
@@ -306,7 +295,7 @@ class TestLoadCsvRulesProperties:
         import tempfile
 
         with tempfile.NamedTemporaryFile(
-            mode='w', suffix='.csv', delete=False, encoding='utf-8'
+            mode="w", suffix=".csv", delete=False, encoding="utf-8"
         ) as f:
             try:
                 f.write(content)
@@ -317,8 +306,7 @@ class TestLoadCsvRulesProperties:
                     rules = load_csv_rules(csv_file)
                     assert isinstance(rules, list)
                 except Exception as e:
-                    assert isinstance(
-                        e, (UnicodeDecodeError, csv.Error, KeyError))
+                    assert isinstance(e, (UnicodeDecodeError, csv.Error, KeyError))
             finally:
                 try:
                     Path(f.name).unlink()
@@ -335,11 +323,7 @@ class TestLoadCsvRulesProperties:
         rules = load_csv_rules(None)
         assert rules == []
 
-    @given(st.lists(
-        st.tuples(locale_code(), locale_code()),
-        min_size=1,
-        max_size=10
-    ))
+    @given(st.lists(st.tuples(locale_code(), locale_code()), min_size=1, max_size=10))
     def test_csv_skips_empty_source(self, rule_data: list[tuple[str, str]]) -> None:
         """CSV loading should skip rows with empty source."""
         import tempfile
@@ -355,17 +339,21 @@ class TestLoadCsvRulesProperties:
                 if len(source) > 0 and len(target) > 0 and "," not in source and "," not in target:
                     lines.append(f"{source},{target},false")
 
-            csv_file.write_text("\n".join(lines), encoding='utf-8')
+            csv_file.write_text("\n".join(lines), encoding="utf-8")
 
             rules = load_csv_rules(csv_file)
 
             assert all(r.source != "" for r in rules)
 
-    @given(st.sampled_from([
-        "source,target,is_case_sensitive",
-        "SOURCE,TARGET,IS_CASE_SENSITIVE",
-        "Source,Target,Is_Case_Sensitive",
-    ]))
+    @given(
+        st.sampled_from(
+            [
+                "source,target,is_case_sensitive",
+                "SOURCE,TARGET,IS_CASE_SENSITIVE",
+                "Source,Target,Is_Case_Sensitive",
+            ]
+        )
+    )
     def test_csv_headers_case_insensitive(self, header: str) -> None:
         """CSV headers should be case-insensitive."""
         import tempfile
@@ -374,11 +362,7 @@ class TestLoadCsvRulesProperties:
             tmp_path = Path(tmp_dir)
 
             csv_file = tmp_path / "rules.csv"
-            csv_file.write_text(
-                f"{header}\n"
-                "chi,zh,false\n",
-                encoding='utf-8'
-            )
+            csv_file.write_text(f"{header}\nchi,zh,false\n", encoding="utf-8")
 
             rules = load_csv_rules(csv_file)
 
@@ -390,18 +374,21 @@ class TestLoadCsvRulesProperties:
 class TestLocaleMapperIntegration:
     """Integration tests combining multiple components."""
 
-    @given(st.lists(
-        st.tuples(locale_code(), locale_code(), st.booleans()),
-        min_size=1,
-        max_size=10,
-        unique_by=lambda x: x[0].lower()
-    ))
+    @given(
+        st.lists(
+            st.tuples(locale_code(), locale_code(), st.booleans()),
+            min_size=1,
+            max_size=10,
+            unique_by=lambda x: x[0].lower(),
+        )
+    )
     def test_csv_and_cli_together(self, rule_data: list[tuple[str, str, bool]]) -> None:
         """CSV and CLI rules should work together correctly."""
         import tempfile
 
         rule_data = [
-            (s, t, c) for s, t, c in rule_data
+            (s, t, c)
+            for s, t, c in rule_data
             if len(s) > 0 and len(t) > 0 and "," not in s and "," not in t
         ]
         assume(len(rule_data) >= 2)
@@ -415,14 +402,10 @@ class TestLocaleMapperIntegration:
             csv_file = tmp_path / "rules.csv"
             lines = ["source,target,is_case_sensitive"]
             for source, target, case_sensitive in csv_data:
-                lines.append(
-                    f"{source},{target},{'true' if case_sensitive else 'false'}")
-            csv_file.write_text("\n".join(lines), encoding='utf-8')
+                lines.append(f"{source},{target},{'true' if case_sensitive else 'false'}")
+            csv_file.write_text("\n".join(lines), encoding="utf-8")
 
-            cli_specs = [
-                f"{s},{t},{'true' if c else 'false'}"
-                for s, t, c in cli_data
-            ]
+            cli_specs = [f"{s},{t},{'true' if c else 'false'}" for s, t, c in cli_data]
 
             csv_rules = load_csv_rules(csv_file)
             cli_rules = parse_cli_rules(cli_specs)
@@ -469,15 +452,13 @@ class TestLocaleMapperInvariants:
     def test_unmapped_locale_is_identity(self, rules: list[Rule], token: str) -> None:
         """If no rule matches, resolve() should return the input unchanged."""
         rules_with_different_sources = [
-            Rule(source=r.source + "_different", target=r.target,
-                 case_sensitive=r.case_sensitive)
+            Rule(source=r.source + "_different", target=r.target, case_sensitive=r.case_sensitive)
             for r in rules
         ]
 
         assume(not any(r.source == token for r in rules_with_different_sources))
 
-        mapper = LocaleMapper(
-            csv_rules=rules_with_different_sources, cli_rules=[])
+        mapper = LocaleMapper(csv_rules=rules_with_different_sources, cli_rules=[])
         result = mapper.resolve(token)
 
         assert result == token

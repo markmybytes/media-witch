@@ -16,6 +16,7 @@ class TorrentConfig:
         output_dir: Output directory for created files
         verbose: Enable verbose output
     """
+
     output_dir: Path
     verbose: bool = False
 
@@ -29,6 +30,7 @@ class TorrentResult:
         created_dirs: List of created directory paths
         errors: List of error messages
     """
+
     created_files: list[Path]
     created_dirs: list[Path]
     errors: list[str]

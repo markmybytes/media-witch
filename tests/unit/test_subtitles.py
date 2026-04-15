@@ -36,15 +36,13 @@ class TestSubtitleService:
     def test_right_most_token(self) -> None:
         """Test extraction of rightmost token."""
         assert SubtitleService._right_most_token(Path("video.en.srt")) == "en"
-        assert SubtitleService._right_most_token(
-            Path("video.zh.Hant.srt")) == "Hant"
+        assert SubtitleService._right_most_token(Path("video.zh.Hant.srt")) == "Hant"
         assert SubtitleService._right_most_token(Path("video.srt")) == ""
 
     def test_stem_wo_token(self) -> None:
         """Test stem without token."""
         assert SubtitleService._stem_wo_token(Path("video.en.srt")) == "video"
-        assert SubtitleService._stem_wo_token(
-            Path("video.zh.Hant.srt")) == "video.zh"
+        assert SubtitleService._stem_wo_token(Path("video.zh.Hant.srt")) == "video.zh"
         assert SubtitleService._stem_wo_token(Path("video.srt")) == "video"
 
     def test_normalized_target_with_mapping(self) -> None:

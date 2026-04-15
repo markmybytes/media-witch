@@ -35,7 +35,4 @@ def natural_sort_key(p: Path) -> tuple:
     Returns:
         Tuple that can be used as a sort key
     """
-    return tuple(
-        int(c) if c.isdigit() else c.lower()
-        for c in re.split(r"(\d+)", p.name)
-    )
+    return tuple(int(c) if c.isdigit() else c.lower() for c in re.split(r"(\d+)", p.name))

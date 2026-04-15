@@ -17,11 +17,11 @@ class TestGenerateNfoContent:
         )
 
         assert '<?xml version="1.0"' in content
-        assert '<episodedetails>' in content
-        assert '<title>Episode Title</title>' in content
-        assert '<episode>5</episode>' in content
-        assert '<season>1</season>' in content
-        assert '</episodedetails>' in content
+        assert "<episodedetails>" in content
+        assert "<title>Episode Title</title>" in content
+        assert "<episode>5</episode>" in content
+        assert "<season>1</season>" in content
+        assert "</episodedetails>" in content
 
     def test_special_characters_in_title(self) -> None:
         """Test handling of special characters in title."""
@@ -31,7 +31,7 @@ class TestGenerateNfoContent:
             episode=10,
         )
 
-        assert '<title>Episode & Title</title>' in content
+        assert "<title>Episode & Title</title>" in content
 
 
 class TestGenerateEpisodeNfos:
@@ -58,8 +58,8 @@ class TestGenerateEpisodeNfos:
             nfo = video.with_suffix(".nfo")
             assert nfo.exists()
             content = nfo.read_text()
-            assert f'<episode>{i}</episode>' in content
-            assert '<season>1</season>' in content
+            assert f"<episode>{i}</episode>" in content
+            assert "<season>1</season>" in content
 
     def test_episode_start_offset(self, tmp_path: Path) -> None:
         """Test episode numbering with start offset."""
@@ -79,8 +79,8 @@ class TestGenerateEpisodeNfos:
         content1 = nfo1.read_text()
         content2 = nfo2.read_text()
 
-        assert '<episode>5</episode>' in content1
-        assert '<episode>6</episode>' in content2
+        assert "<episode>5</episode>" in content1
+        assert "<episode>6</episode>" in content2
 
     def test_episode_overrides(self, tmp_path: Path) -> None:
         """Test episode number overrides."""
@@ -93,21 +93,16 @@ class TestGenerateEpisodeNfos:
             v.touch()
 
         # Override: episode 2 should be numbered as 10
-        config = NFOConfig(
-            season=1,
-            episode_start=1,
-            episode_overrides={2: 10},
-            dry_run=False
-        )
+        config = NFOConfig(season=1, episode_start=1, episode_overrides={2: 10}, dry_run=False)
         generate_episode_nfos(videos, config)
 
         nfo1 = videos[0].with_suffix(".nfo")
         nfo2 = videos[1].with_suffix(".nfo")
         nfo3 = videos[2].with_suffix(".nfo")
 
-        assert '<episode>1</episode>' in nfo1.read_text()
-        assert '<episode>10</episode>' in nfo2.read_text()
-        assert '<episode>3</episode>' in nfo3.read_text()
+        assert "<episode>1</episode>" in nfo1.read_text()
+        assert "<episode>10</episode>" in nfo2.read_text()
+        assert "<episode>3</episode>" in nfo3.read_text()
 
     def test_dry_run_no_creation(self, tmp_path: Path) -> None:
         """Test dry-run doesn't create files."""

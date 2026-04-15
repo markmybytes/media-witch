@@ -11,9 +11,9 @@ def print_section(title: str) -> None:
     Args:
         title: Section title
     """
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  {title}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
 
 def print_tree(path: Path) -> str:

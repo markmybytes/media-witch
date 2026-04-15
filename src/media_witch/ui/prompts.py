@@ -25,33 +25,38 @@ def ask_processing_choice(path: Path, has_files: bool) -> str:
 
     # Import display here to avoid circular import
     from .display import print_tree
+
     print(print_tree(path) or "Failed to scan the directory.")
     print()
 
     if has_files:
-        return questionary.select(
-            "Select how to process this folder:",
-            choices=[
-                questionary.Choice("TV Show", "show"),
-                questionary.Choice("Movie", "movie"),
-                questionary.Choice("Skip this folder", "skip"),
-            ],
-            default="skip",
-        ).unsafe_ask() or "skip"
+        return (
+            questionary.select(
+                "Select how to process this folder:",
+                choices=[
+                    questionary.Choice("TV Show", "show"),
+                    questionary.Choice("Movie", "movie"),
+                    questionary.Choice("Skip this folder", "skip"),
+                ],
+                default="skip",
+            ).unsafe_ask()
+            or "skip"
+        )
     else:
         print("No files found. This folder likely contains subdirectories.\n")
-        return questionary.select(
-            "What does this folder represent?",
-            choices=[
-                questionary.Choice("Skip this folder", "skip"),
-                questionary.Choice("Contains multiple SHOWS", "shows"),
-                questionary.Choice(
-                    "Contains multiple SEASONS of the same show", "seasons"),
-                questionary.Choice(
-                    "Contains multiple MOVIE SEQUELS", "movies"),
-            ],
-            default="skip",
-        ).unsafe_ask() or "skip"
+        return (
+            questionary.select(
+                "What does this folder represent?",
+                choices=[
+                    questionary.Choice("Skip this folder", "skip"),
+                    questionary.Choice("Contains multiple SHOWS", "shows"),
+                    questionary.Choice("Contains multiple SEASONS of the same show", "seasons"),
+                    questionary.Choice("Contains multiple MOVIE SEQUELS", "movies"),
+                ],
+                default="skip",
+            ).unsafe_ask()
+            or "skip"
+        )
 
 
 def ask_season(default: int = 1) -> int:
@@ -64,8 +69,7 @@ def ask_season(default: int = 1) -> int:
         Season number
     """
     while True:
-        ans = questionary.text(
-            "Season number?", default=str(default)).unsafe_ask()
+        ans = questionary.text("Season number?", default=str(default)).unsafe_ask()
         if ans is None:
             return default
         ans = ans.strip()
@@ -85,12 +89,10 @@ def ask_extras_classification(items: list[Path], defaults: list[bool]) -> list[b
         Boolean list where True = extra, False = primary
     """
     choices = [
-        questionary.Choice(
-            title=f"{p.name} [{'EXTRA' if d else 'PRIMARY'}]", value=i, checked=d)
+        questionary.Choice(title=f"{p.name} [{'EXTRA' if d else 'PRIMARY'}]", value=i, checked=d)
         for i, (p, d) in enumerate(zip(items, defaults, strict=False))
     ]
-    selected = set(questionary.checkbox(
-        "Select EXTRAS", choices=choices).unsafe_ask() or [])
+    selected = set(questionary.checkbox("Select EXTRAS", choices=choices).unsafe_ask() or [])
     return [i in selected for i in range(len(items))]
 
 
@@ -112,9 +114,7 @@ def ask_nfo_overrides(videos: list[Path], season: int) -> dict[int, int]:
         print(f"  {i:2d}. {p.name:40s} → Episode {defaults[p]}")
     print()
 
-    if not questionary.confirm(
-        "Override any episode numbers?", default=False
-    ).unsafe_ask():
+    if not questionary.confirm("Override any episode numbers?", default=False).unsafe_ask():
         return {}
 
     print("\n" + "─" * 60)
@@ -124,8 +124,7 @@ def ask_nfo_overrides(videos: list[Path], season: int) -> dict[int, int]:
     for idx, p in enumerate(videos, start=1):
         while True:
             v = questionary.text(
-                f"[{idx}/{len(videos)}] {p.name}",
-                default=str(defaults[p])
+                f"[{idx}/{len(videos)}] {p.name}", default=str(defaults[p])
             ).unsafe_ask()
             if v is None:
                 v = str(defaults[p])

@@ -30,6 +30,7 @@ class FileOps:
         self.dry = dry_run
         self._log = logger or print
         self._ensured: set[Path] = set()
+        self._test_logs: list[str] = []
 
     def _norm(self, p: Path) -> Path:
         """Normalize a path to absolute form."""
@@ -115,12 +116,7 @@ class FileOps:
         if not self.dry:
             p.unlink()
 
-    def write_text_if_absent(
-        self,
-        path: Path,
-        content: str,
-        label: str = "[WRITE]"
-    ) -> None:
+    def write_text_if_absent(self, path: Path, content: str, label: str = "[WRITE]") -> None:
         """Write text content to file if it doesn't exist.
 
         Args:

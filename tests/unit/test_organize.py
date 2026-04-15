@@ -109,8 +109,7 @@ class TestOrganizeTvShow:
         video = source_dir / "Show.S02E01.mkv"
         video.touch()
 
-        config = OrganizeConfig(mode="show", season=2,
-                                dry_run=False, root_dir=root_dir)
+        config = OrganizeConfig(mode="show", season=2, dry_run=False, root_dir=root_dir)
         fops = FileOps(dry_run=False)
 
         organize_tv_show(source_dir, 2, config, fops)
@@ -136,8 +135,7 @@ class TestOrganizeTvShow:
         assert (tmp_path / "Season 1" / "Show.S01E01.mkv").exists()
 
         # Extra in EXTRA folder
-        assert (tmp_path / "EXTRA" / "Season 1" /
-                "behind.the.scenes.mkv").exists()
+        assert (tmp_path / "EXTRA" / "Season 1" / "behind.the.scenes.mkv").exists()
 
     def test_respects_extras_flags(self, tmp_path: Path) -> None:
         """Test that provided extras_flags are respected."""
@@ -170,8 +168,7 @@ class TestOrganizeTvShow:
         video = video_dir / "Show.S01E01.mkv"
         video.touch()
 
-        config = OrganizeConfig(mode="show", season=1,
-                                dry_run=False, extras_flags=[False])
+        config = OrganizeConfig(mode="show", season=1, dry_run=False, extras_flags=[False])
         fops = FileOps(dry_run=False)
 
         organize_tv_show(tmp_path, 1, config, fops)
@@ -207,8 +204,7 @@ class TestOrganizeTvShow:
 
         rules = [Rule("chi", "zh", False)]
         mapper = LocaleMapper(csv_rules=[], cli_rules=rules)
-        config = OrganizeConfig(mode="show", season=1,
-                                dry_run=False, locale_mapper=mapper)
+        config = OrganizeConfig(mode="show", season=1, dry_run=False, locale_mapper=mapper)
         fops = FileOps(dry_run=False)
 
         organize_tv_show(tmp_path, 1, config, fops)
@@ -225,8 +221,7 @@ class TestOrganizeTvShow:
         video1.touch()
         video2.touch()
 
-        config = OrganizeConfig(mode="show", season=1,
-                                dry_run=False, generate_nfo=True)
+        config = OrganizeConfig(mode="show", season=1, dry_run=False, generate_nfo=True)
         fops = FileOps(dry_run=False)
 
         result = organize_tv_show(tmp_path, 1, config, fops)
@@ -312,8 +307,7 @@ class TestOrganizeTvShow:
         audio = tmp_path / "audio.mka"
         audio.touch()
 
-        config = OrganizeConfig(mode="show", season=1,
-                                dry_run=False, extras_flags=[False])
+        config = OrganizeConfig(mode="show", season=1, dry_run=False, extras_flags=[False])
         fops = FileOps(dry_run=False)
 
         organize_tv_show(tmp_path, 1, config, fops)
@@ -330,8 +324,7 @@ class TestOrganizeMovie:
         video = tmp_path / "Movie.2024.mkv"
         video.touch()
 
-        config = OrganizeConfig(
-            mode="movie", dry_run=False, extras_flags=[False])
+        config = OrganizeConfig(mode="movie", dry_run=False, extras_flags=[False])
         fops = FileOps(dry_run=False)
 
         organize_movie(tmp_path, config, fops)
@@ -346,8 +339,7 @@ class TestOrganizeMovie:
         video.touch()
         extra.touch()
 
-        config = OrganizeConfig(
-            mode="movie", dry_run=False, extras_flags=[True, False])
+        config = OrganizeConfig(mode="movie", dry_run=False, extras_flags=[True, False])
         fops = FileOps(dry_run=False)
 
         organize_movie(tmp_path, config, fops)
@@ -365,8 +357,7 @@ class TestOrganizeMovie:
         video = video_dir / "Movie.2024.mkv"
         video.touch()
 
-        config = OrganizeConfig(
-            mode="movie", dry_run=False, extras_flags=[False])
+        config = OrganizeConfig(mode="movie", dry_run=False, extras_flags=[False])
         fops = FileOps(dry_run=False)
 
         organize_movie(tmp_path, config, fops)
@@ -403,7 +394,8 @@ class TestOrganizeMovie:
         rules = [Rule("chi", "zh", False)]
         mapper = LocaleMapper(csv_rules=[], cli_rules=rules)
         config = OrganizeConfig(
-            mode="movie", dry_run=False, locale_mapper=mapper, extras_flags=[False, False])
+            mode="movie", dry_run=False, locale_mapper=mapper, extras_flags=[False, False]
+        )
         fops = FileOps(dry_run=False)
 
         organize_movie(tmp_path, config, fops)
@@ -429,8 +421,7 @@ class TestOrganizeMovie:
         video = tmp_path / "Movie.2024.mkv"
         video.touch()
 
-        config = OrganizeConfig(
-            mode="movie", dry_run=True, extras_flags=[False])
+        config = OrganizeConfig(mode="movie", dry_run=True, extras_flags=[False])
         fops = FileOps(dry_run=True)
 
         organize_movie(tmp_path, config, fops)
@@ -446,8 +437,7 @@ class TestOrganizeMovie:
         file2.touch()
 
         # Mark file2 as extra
-        config = OrganizeConfig(
-            mode="movie", dry_run=False, extras_flags=[False, True])
+        config = OrganizeConfig(mode="movie", dry_run=False, extras_flags=[False, True])
         fops = FileOps(dry_run=False)
 
         organize_movie(tmp_path, config, fops)
@@ -490,8 +480,7 @@ class TestOrganizeDirectory:
         video = tmp_path / "Movie.2024.mkv"
         video.touch()
 
-        config = OrganizeConfig(
-            mode="movie", dry_run=False, extras_flags=[False])
+        config = OrganizeConfig(mode="movie", dry_run=False, extras_flags=[False])
 
         organize_directory(tmp_path, config)
 

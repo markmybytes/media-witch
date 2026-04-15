@@ -18,20 +18,20 @@ class TorrentInfo:
             data: Decoded bencode dictionary
         """
         self._data = data
-        self._info = data[b'info']
+        self._info = data[b"info"]
 
     @property
     def name(self) -> str:
         """Get torrent name."""
-        name_bytes = self._info[b'name']
+        name_bytes = self._info[b"name"]
         if isinstance(name_bytes, bytes):
-            return name_bytes.decode('utf-8', errors='replace')
+            return name_bytes.decode("utf-8", errors="replace")
         return str(name_bytes)
 
     @property
     def is_single_file(self) -> bool:
         """Check if torrent contains a single file."""
-        return b'files' not in self._info
+        return b"files" not in self._info
 
     @property
     def files(self) -> list[tuple[list[str], int]]:
@@ -41,13 +41,12 @@ class TorrentInfo:
             List of (path_parts, size) tuples
         """
         if self.is_single_file:
-            return [([self.name], self._info[b'length'])]
+            return [([self.name], self._info[b"length"])]
 
         result = []
-        for file_dict in self._info[b'files']:
-            path = [p.decode('utf-8', errors='replace')
-                    for p in file_dict[b'path']]
-            size = file_dict[b'length']
+        for file_dict in self._info[b"files"]:
+            path = [p.decode("utf-8", errors="replace") for p in file_dict[b"path"]]
+            size = file_dict[b"length"]
             result.append((path, size))
         return result
 
@@ -55,11 +54,11 @@ class TorrentInfo:
     def total_size(self) -> int:
         """Get total size of all files in bytes."""
         if self.is_single_file:
-            length = self._info[b'length']
+            length = self._info[b"length"]
             return int(length) if isinstance(length, (int, float)) else 0
         return sum(
-            int(f[b'length']) if isinstance(f[b'length'], (int, float)) else 0
-            for f in self._info[b'files']
+            int(f[b"length"]) if isinstance(f[b"length"], (int, float)) else 0
+            for f in self._info[b"files"]
         )
 
 
@@ -76,6 +75,6 @@ def parse_torrent(torrent_path: Path) -> TorrentInfo:
         FileNotFoundError: If torrent file doesn't exist
         ValueError: If file is not valid bencode
     """
-    with torrent_path.open('rb') as f:
+    with torrent_path.open("rb") as f:
         data = bdecode(f.read())
     return TorrentInfo(data)

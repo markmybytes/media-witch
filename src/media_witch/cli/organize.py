@@ -77,14 +77,10 @@ def _process_interactive(
                     click.echo(f"{'─' * 60}")
                 season = ask_season(default=1)
                 # Always enable NFO generation, but callback will ask user
-                _process_single_dir(
-                    leaf, "show", season, mapper, True, dry_run, quiet
-                )
+                _process_single_dir(leaf, "show", season, mapper, True, dry_run, quiet)
             return
         elif choice == "movie":
-            _process_single_dir(
-                path, "movie", None, mapper, False, dry_run, quiet
-            )
+            _process_single_dir(path, "movie", None, mapper, False, dry_run, quiet)
             return
 
     # Handle batch processing modes (no files in current directory)
@@ -103,9 +99,7 @@ def _process_interactive(
                 click.echo(f"{'─' * 60}")
             season = ask_season(default=1)
             # Always enable NFO generation, but callback will ask user
-            _process_single_dir_batch(
-                subdir, "show", season, path, mapper, True, dry_run, quiet
-            )
+            _process_single_dir_batch(subdir, "show", season, path, mapper, True, dry_run, quiet)
         return
     elif choice == "movies":
         # Process each subdir as a movie
@@ -114,9 +108,7 @@ def _process_interactive(
                 click.echo(f"\n{'─' * 60}")
                 click.echo(f"🎬 [MOVIE] {subdir}")
                 click.echo(f"{'─' * 60}")
-            _process_single_dir(
-                subdir, "movie", None, mapper, False, dry_run, quiet
-            )
+            _process_single_dir(subdir, "movie", None, mapper, False, dry_run, quiet)
         return
 
 
@@ -140,8 +132,7 @@ def _process_single_dir(
         dry_run: Preview mode
         quiet: Suppress output
     """
-    _process_single_dir_impl(path, mode, season, mapper,
-                             generate_nfo, dry_run, quiet, None)
+    _process_single_dir_impl(path, mode, season, mapper, generate_nfo, dry_run, quiet, None)
 
 
 def _process_single_dir_batch(
@@ -166,8 +157,7 @@ def _process_single_dir_batch(
         dry_run: Preview mode
         quiet: Suppress output
     """
-    _process_single_dir_impl(path, mode, season, mapper,
-                             generate_nfo, dry_run, quiet, root_dir)
+    _process_single_dir_impl(path, mode, season, mapper, generate_nfo, dry_run, quiet, root_dir)
 
 
 def _process_single_dir_impl(
@@ -225,8 +215,7 @@ def _process_single_dir_impl(
 
         if videos_sorted:
             # Ask if user wants to generate NFO files
-            generate_nfo_answer = ask_yes_no(
-                "Generate NFO files?", default=True)
+            generate_nfo_answer = ask_yes_no("Generate NFO files?", default=True)
             skip_nfo = not generate_nfo_answer
 
             # Ask for episode overrides if user said yes

@@ -50,11 +50,9 @@ def nfo_command(
         if path.is_file() and is_video(path):
             videos = [path]
         elif path.is_dir():
-            videos = sorted([p for p in path.iterdir()
-                            if p.is_file() and is_video(p)])
+            videos = sorted([p for p in path.iterdir() if p.is_file() and is_video(p)])
         else:
-            click.echo(
-                f"Skipping {path}: not a video file or directory", err=True)
+            click.echo(f"Skipping {path}: not a video file or directory", err=True)
             continue
 
         if not videos:

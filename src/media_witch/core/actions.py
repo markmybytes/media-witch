@@ -24,13 +24,7 @@ class ActionQueue:
         self.fops = fops
         self._q: list[tuple[Callable, tuple, dict, str]] = []
 
-    def add(
-        self,
-        func: Callable,
-        *args: Any,
-        desc: str = "",
-        **kwargs: Any
-    ) -> None:
+    def add(self, func: Callable, *args: Any, desc: str = "", **kwargs: Any) -> None:
         """Add an action to the queue.
 
         Args:

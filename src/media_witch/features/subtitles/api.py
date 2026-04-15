@@ -19,6 +19,7 @@ class SubtitleConfig:
         dry_run: If True, preview changes without executing
         remove_unmapped: If True, remove subtitles not in mapping target locales
     """
+
     locale_mapper: LocaleMapper
     dry_run: bool = False
     remove_unmapped: bool = False
@@ -34,6 +35,7 @@ class SubtitleResult:
         removed: List of files that were removed
         errors: List of error messages
     """
+
     renamed: list[tuple[Path, Path]]
     skipped: list[Path]
     removed: list[Path]
@@ -120,19 +122,19 @@ class SubtitleService:
         for sub in subs:
             if not self.pairs_with(sub, video_dst):
                 continue
-            dst = video_dst.parent / \
-                self.normalized_target(sub, video_dst).name
+            dst = video_dst.parent / self.normalized_target(sub, video_dst).name
             if sub.parent != video_dst.parent:
                 tmp = video_dst.parent / sub.name
-                aq.add(self.fops.move_file, sub, tmp,
-                       desc=f"[MOVE] {sub} -> {tmp}")
+                aq.add(self.fops.move_file, sub, tmp, desc=f"[MOVE] {sub} -> {tmp}")
                 if tmp != dst:
-                    aq.add(self.fops.rename_file, tmp, dst,
-                           desc=f"[RENAME] {tmp.name} -> {dst.name}")
+                    aq.add(
+                        self.fops.rename_file, tmp, dst, desc=f"[RENAME] {tmp.name} -> {dst.name}"
+                    )
             else:
                 if sub != dst:
-                    aq.add(self.fops.rename_file, sub, dst,
-                           desc=f"[RENAME] {sub.name} -> {dst.name}")
+                    aq.add(
+                        self.fops.rename_file, sub, dst, desc=f"[RENAME] {sub.name} -> {dst.name}"
+                    )
 
 
 def rename_subtitles(
@@ -159,8 +161,7 @@ def rename_subtitles(
     errors = []
 
     # Get allowed target locales if remove_unmapped is enabled
-    allowed_locales = config.locale_mapper.get_target_locales(
-    ) if config.remove_unmapped else set()
+    allowed_locales = config.locale_mapper.get_target_locales() if config.remove_unmapped else set()
 
     for sub in subtitles:
         try:
@@ -171,8 +172,7 @@ def rename_subtitles(
             # Check if subtitle should be removed (not in allowed locales)
             if config.remove_unmapped:
                 token = service._right_most_token(sub)
-                mapped_locale = config.locale_mapper.resolve(
-                    token) if token else token
+                mapped_locale = config.locale_mapper.resolve(token) if token else token
                 if mapped_locale and mapped_locale not in allowed_locales:
                     if not config.dry_run:
                         fops.remove_file(sub, label="[REMOVE]")

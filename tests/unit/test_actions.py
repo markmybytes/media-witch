@@ -1,7 +1,5 @@
 """Unit tests for ActionQueue class."""
 
-
-
 from media_witch.core.actions import ActionQueue
 from media_witch.core.fileops import FileOps
 
