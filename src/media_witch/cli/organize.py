@@ -60,55 +60,55 @@ def _process_interactive(
     # Ask user what to do
     choice = ask_processing_choice(path, has_files)
 
-    if choice == "skip":
+    if choice == 'skip':
         if not quiet:
-            click.echo(f"⏭️  Skipped: {path}")
+            click.echo(f'⏭️  Skipped: {path}')
         return
 
     # If directory has files, process based on choice
     if has_files:
-        if choice == "show":
+        if choice == 'show':
             # Find all leaf directories and process each as a season
             leafs = _find_leaf_directories(path)
             for leaf in leafs:
                 if not quiet:
-                    click.echo(f"\n{'─' * 60}")
-                    click.echo(f"📂 [UNIT] {leaf}")
-                    click.echo(f"{'─' * 60}")
+                    click.echo(f'\n{"─" * 60}')
+                    click.echo(f'📂 [UNIT] {leaf}')
+                    click.echo(f'{"─" * 60}')
                 season = ask_season(default=1)
                 # Always enable NFO generation, but callback will ask user
-                _process_single_dir(leaf, "show", season, mapper, True, dry_run, quiet)
+                _process_single_dir(leaf, 'show', season, mapper, True, dry_run, quiet)
             return
-        elif choice == "movie":
-            _process_single_dir(path, "movie", None, mapper, False, dry_run, quiet)
+        elif choice == 'movie':
+            _process_single_dir(path, 'movie', None, mapper, False, dry_run, quiet)
             return
 
     # Handle batch processing modes (no files in current directory)
-    if choice == "shows":
+    if choice == 'shows':
         # Process each subdir as a separate show
         for subdir in dirs:
             _process_interactive(subdir, mapper, dry_run, quiet)
         return
-    elif choice == "seasons":
+    elif choice == 'seasons':
         # Process each subdir as a season (ask for season number per subdir)
         # Files in each season subdir will be moved to parent's Season folders
         for subdir in sorted(dirs):
             if not quiet:
-                click.echo(f"\n{'─' * 60}")
-                click.echo(f"📺 [SEASON] {subdir}")
-                click.echo(f"{'─' * 60}")
+                click.echo(f'\n{"─" * 60}')
+                click.echo(f'📺 [SEASON] {subdir}')
+                click.echo(f'{"─" * 60}')
             season = ask_season(default=1)
             # Always enable NFO generation, but callback will ask user
-            _process_single_dir_batch(subdir, "show", season, path, mapper, True, dry_run, quiet)
+            _process_single_dir_batch(subdir, 'show', season, path, mapper, True, dry_run, quiet)
         return
-    elif choice == "movies":
+    elif choice == 'movies':
         # Process each subdir as a movie
         for subdir in dirs:
             if not quiet:
-                click.echo(f"\n{'─' * 60}")
-                click.echo(f"🎬 [MOVIE] {subdir}")
-                click.echo(f"{'─' * 60}")
-            _process_single_dir(subdir, "movie", None, mapper, False, dry_run, quiet)
+                click.echo(f'\n{"─" * 60}')
+                click.echo(f'🎬 [MOVIE] {subdir}')
+                click.echo(f'{"─" * 60}')
+            _process_single_dir(subdir, 'movie', None, mapper, False, dry_run, quiet)
         return
 
 
@@ -201,7 +201,7 @@ def _process_single_dir_impl(
     skip_nfo = False
     episode_overrides = None
 
-    if mode == "show" and season is not None and generate_nfo:
+    if mode == 'show' and season is not None and generate_nfo:
         # Find which videos will actually be organized (not marked as extras)
         videos_kept = []
         if extras_flags:
@@ -215,7 +215,7 @@ def _process_single_dir_impl(
 
         if videos_sorted:
             # Ask if user wants to generate NFO files
-            generate_nfo_answer = ask_yes_no("Generate NFO files?", default=True)
+            generate_nfo_answer = ask_yes_no('Generate NFO files?', default=True)
             skip_nfo = not generate_nfo_answer
 
             # Ask for episode overrides if user said yes
@@ -241,19 +241,19 @@ def _process_single_dir_impl(
 
         if not quiet:
             if dry_run:
-                click.echo("[DRY-RUN] Preview mode")
-            click.echo(f"Files moved: {len(result.files_moved)}")
-            click.echo(f"NFOs created: {len(result.nfos_created)}")
+                click.echo('[DRY-RUN] Preview mode')
+            click.echo(f'Files moved: {len(result.files_moved)}')
+            click.echo(f'NFOs created: {len(result.nfos_created)}')
             if result.errors:
-                click.echo(f"Errors: {len(result.errors)}", err=True)
+                click.echo(f'Errors: {len(result.errors)}', err=True)
                 for error in result.errors[:5]:
-                    click.echo(f"  {error}", err=True)
+                    click.echo(f'  {error}', err=True)
     except Exception as e:
-        click.echo(f"Error processing {path}: {e}", err=True)
+        click.echo(f'Error processing {path}: {e}', err=True)
 
 
-@click.command(name="organize")
-@click.argument("paths", nargs=-1, type=click.Path(exists=True), required=True)
+@click.command(name='organize')
+@click.argument('paths', nargs=-1, type=click.Path(exists=True), required=True)
 @locale_csv_option
 @locale_map_option
 @dry_run_option
@@ -285,5 +285,5 @@ def organize_command(
             path = Path(path_str)
             _process_interactive(path, mapper, dry_run, quiet)
     except KeyboardInterrupt:
-        click.echo("\n⚠️  Operation cancelled by user", err=True)
+        click.echo('\n⚠️  Operation cancelled by user', err=True)
         raise SystemExit(1) from None

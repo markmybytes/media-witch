@@ -11,7 +11,7 @@ from .torrent import torrent_command
 
 
 @click.group()
-@click.version_option(version="2.0.0", prog_name="media-witch")
+@click.version_option(version='2.0.0', prog_name='media-witch')
 def cli() -> None:
     """Media Witch - A modular CLI toolkit for media file organization."""
     pass
@@ -24,5 +24,5 @@ cli.add_command(subtitles_command)
 cli.add_command(torrent_command)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     cli()

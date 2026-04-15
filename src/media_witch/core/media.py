@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-VIDEO_EXTS: set[str] = {".mkv", ".mp4", ".avi", ".mov", ".ts", ".m2ts", ".wmv"}
+VIDEO_EXTS: set[str] = {'.mkv', '.mp4', '.avi', '.mov', '.ts', '.m2ts', '.wmv'}
 
-AUDIO_EXTS: set[str] = {".mka", ".aac", ".flac", ".dts", ".ac3", ".eac3", ".mp3", ".ogg", ".opus"}
+AUDIO_EXTS: set[str] = {'.mka', '.aac', '.flac', '.dts', '.ac3', '.eac3', '.mp3', '.ogg', '.opus'}
 
-SUB_EXTS: set[str] = {".ass", ".ssa", ".sup", ".srt"}
+SUB_EXTS: set[str] = {'.ass', '.ssa', '.sup', '.srt'}
 
 
 def is_video(p: Path) -> bool:

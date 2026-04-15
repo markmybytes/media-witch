@@ -57,11 +57,11 @@ def generate_nfo_content(
     """
     return (
         '<?xml version="1.0" encoding="utf-8" standalone="yes"?>'
-        "<episodedetails>"
-        f"<title>{title}</title>"
-        f"<episode>{episode}</episode>"
-        f"<season>{season}</season>"
-        "</episodedetails>"
+        '<episodedetails>'
+        f'<title>{title}</title>'
+        f'<episode>{episode}</episode>'
+        f'<season>{season}</season>'
+        '</episodedetails>'
     )
 
 
@@ -90,7 +90,7 @@ def generate_episode_nfos(
     for idx, video in enumerate(videos, start=1):
         try:
             ep = episode_overrides.get(idx, defaults[video])
-            nfo_path = video.with_suffix(".nfo")
+            nfo_path = video.with_suffix('.nfo')
 
             if nfo_path.exists() and not config.dry_run:
                 skipped.append(nfo_path)
@@ -102,10 +102,10 @@ def generate_episode_nfos(
                 episode=ep,
             )
 
-            fops.write_text_if_absent(nfo_path, content, label="[NFO]")
+            fops.write_text_if_absent(nfo_path, content, label='[NFO]')
             created.append(nfo_path)
 
         except Exception as e:
-            errors.append(f"Error creating NFO for {video}: {e}")
+            errors.append(f'Error creating NFO for {video}: {e}')
 
     return NFOResult(created=created, skipped=skipped, errors=errors)

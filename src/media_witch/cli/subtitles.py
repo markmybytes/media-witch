@@ -12,15 +12,15 @@ from ..features.subtitles.locale import LocaleMapper, load_csv_rules, parse_cli_
 from .common import common_options, locale_csv_option, locale_map_option
 
 
-@click.command(name="subtitles")
-@click.argument("paths", nargs=-1, type=click.Path(exists=True), required=True)
+@click.command(name='subtitles')
+@click.argument('paths', nargs=-1, type=click.Path(exists=True), required=True)
 @locale_csv_option
 @locale_map_option
 @click.option(
-    "--remove",
+    '--remove',
     is_flag=True,
     default=False,
-    help="Remove subtitles whose locale is not in the mapping target list",
+    help='Remove subtitles whose locale is not in the mapping target list',
 )
 @common_options
 def subtitles_command(
@@ -47,7 +47,7 @@ def subtitles_command(
                 subtitles = [path]
                 videos = [p for p in path.parent.iterdir() if is_video(p)]
             else:
-                click.echo(f"Skipping {path}: not a subtitle file", err=True)
+                click.echo(f'Skipping {path}: not a subtitle file', err=True)
                 continue
         elif path.is_dir():
             subtitles = [p for p in path.iterdir() if p.is_file() and is_subtitle(p)]
@@ -57,12 +57,12 @@ def subtitles_command(
 
         if not subtitles:
             if not quiet:
-                click.echo(f"No subtitle files found in {path}")
+                click.echo(f'No subtitle files found in {path}')
             continue
 
         if not videos:
             if not quiet:
-                click.echo(f"No video files found to pair with in {path}")
+                click.echo(f'No video files found to pair with in {path}')
             continue
 
         # Pair subtitles with videos
@@ -92,20 +92,20 @@ def subtitles_command(
 
                 if verbose or dry_run:
                     for src, dst in result.renamed:
-                        click.echo(f"  [RENAME] {src.name} → {dst.name}")
+                        click.echo(f'  [RENAME] {src.name} → {dst.name}')
                     for sub in result.removed:
-                        click.echo(f"  [REMOVE] {sub.name}")
+                        click.echo(f'  [REMOVE] {sub.name}')
 
             except Exception as e:
-                click.echo(f"Error processing subtitles for {video}: {e}", err=True)
+                click.echo(f'Error processing subtitles for {video}: {e}', err=True)
                 continue
 
         if not quiet:
             if dry_run:
-                click.echo("[DRY-RUN] Preview mode")
-            click.echo(f"Subtitles renamed: {total_renamed}")
+                click.echo('[DRY-RUN] Preview mode')
+            click.echo(f'Subtitles renamed: {total_renamed}')
             if remove:
-                click.echo(f"Subtitles removed: {total_removed}")
-            click.echo(f"Skipped: {total_skipped}")
+                click.echo(f'Subtitles removed: {total_removed}')
+            click.echo(f'Skipped: {total_skipped}')
             if total_errors > 0:
-                click.echo(f"Errors: {total_errors}", err=True)
+                click.echo(f'Errors: {total_errors}', err=True)

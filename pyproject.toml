@@ -69,3 +69,6 @@ select = [
     "UP",  # pyupgrade
 ]
 ignore = []
+
+[tool.ruff.format]
+quote-style = "single"

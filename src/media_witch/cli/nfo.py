@@ -12,25 +12,25 @@ from ..ui.prompts import ask_nfo_overrides
 from .common import common_options
 
 
-@click.command(name="nfo")
-@click.argument("paths", nargs=-1, type=click.Path(exists=True), required=True)
+@click.command(name='nfo')
+@click.argument('paths', nargs=-1, type=click.Path(exists=True), required=True)
 @click.option(
-    "--season",
+    '--season',
     type=int,
     required=True,
-    help="Season number (required for TV episodes)",
+    help='Season number (required for TV episodes)',
 )
 @click.option(
-    "--episode-start",
+    '--episode-start',
     type=int,
     default=1,
-    help="Starting episode number",
+    help='Starting episode number',
 )
 @click.option(
-    "--interactive",
+    '--interactive',
     is_flag=True,
     default=False,
-    help="Interactively override episode numbers",
+    help='Interactively override episode numbers',
 )
 @common_options
 def nfo_command(
@@ -52,12 +52,12 @@ def nfo_command(
         elif path.is_dir():
             videos = sorted([p for p in path.iterdir() if p.is_file() and is_video(p)])
         else:
-            click.echo(f"Skipping {path}: not a video file or directory", err=True)
+            click.echo(f'Skipping {path}: not a video file or directory', err=True)
             continue
 
         if not videos:
             if not quiet:
-                click.echo(f"No video files found in {path}")
+                click.echo(f'No video files found in {path}')
             continue
 
         # Get episode overrides if interactive mode
@@ -78,16 +78,16 @@ def nfo_command(
 
             if not quiet:
                 if dry_run:
-                    click.echo("[DRY-RUN] Preview mode")
-                click.echo(f"NFOs created: {len(result.created)}")
-                click.echo(f"Skipped: {len(result.skipped)}")
+                    click.echo('[DRY-RUN] Preview mode')
+                click.echo(f'NFOs created: {len(result.created)}')
+                click.echo(f'Skipped: {len(result.skipped)}')
                 if verbose:
                     for nfo in result.created:
-                        click.echo(f"  Created: {nfo}")
+                        click.echo(f'  Created: {nfo}')
                 if result.errors:
-                    click.echo(f"Errors: {len(result.errors)}", err=True)
+                    click.echo(f'Errors: {len(result.errors)}', err=True)
                     for error in result.errors:
-                        click.echo(f"  {error}", err=True)
+                        click.echo(f'  {error}', err=True)
         except Exception as e:
-            click.echo(f"Error processing {path}: {e}", err=True)
+            click.echo(f'Error processing {path}: {e}', err=True)
             continue

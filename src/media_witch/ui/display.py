@@ -11,9 +11,9 @@ def print_section(title: str) -> None:
     Args:
         title: Section title
     """
-    print(f"\n{'=' * 60}")
-    print(f"  {title}")
-    print(f"{'=' * 60}")
+    print(f'\n{"=" * 60}')
+    print(f'  {title}')
+    print(f'{"=" * 60}')
 
 
 def print_tree(path: Path) -> str:
@@ -28,10 +28,10 @@ def print_tree(path: Path) -> str:
     try:
         entries = sorted(path.iterdir())
     except (PermissionError, NotADirectoryError):
-        return ""
+        return ''
 
     lines = [
-        f"{'└── ' if i == len(entries) - 1 else '├── '}{entry.name}{'/' if entry.is_dir() else ''}"
+        f'{"└── " if i == len(entries) - 1 else "├── "}{entry.name}{"/" if entry.is_dir() else ""}'
         for i, entry in enumerate(entries)
     ]
-    return "\n".join(lines)
+    return '\n'.join(lines)

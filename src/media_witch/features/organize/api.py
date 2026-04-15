@@ -33,7 +33,7 @@ class OrganizeConfig:
         remove_unmapped_subs: Whether to remove subtitles not in mapping target locales
     """
 
-    mode: Literal["show", "movie", "skip"]
+    mode: Literal['show', 'movie', 'skip']
     season: int | None = None
     locale_mapper: LocaleMapper | None = None
     generate_nfo: bool = False
@@ -110,8 +110,8 @@ def organize_tv_show(
 
     # Use root_dir if provided (for batch season processing), otherwise use path
     output_root = config.root_dir if config.root_dir else path
-    season_dir = output_root / f"Season {season}"
-    extra_dir = output_root / "EXTRA" / f"Season {season}"
+    season_dir = output_root / f'Season {season}'
+    extra_dir = output_root / 'EXTRA' / f'Season {season}'
 
     moved_video_dsts: list[Path] = []
 
@@ -121,21 +121,21 @@ def organize_tv_show(
             if item.is_dir():
                 if is_ex:
                     dst = extra_dir / item.name
-                    aq.add(fops.move_dir_atomic, item, dst, desc=f"[MOVE-DIR] {item} -> {dst}")
+                    aq.add(fops.move_dir_atomic, item, dst, desc=f'[MOVE-DIR] {item} -> {dst}')
                     files_moved.append((item, dst))
                 else:
                     aq.add(
                         fops.move_dir_contents_to,
                         item,
                         season_dir,
-                        desc=f"[FLATTEN] {item} -> {season_dir}",
+                        desc=f'[FLATTEN] {item} -> {season_dir}',
                     )
                     files_moved.append((item, season_dir))
                 continue
 
             if is_ex:
                 dst = extra_dir / item.name
-                aq.add(fops.move_file, item, dst, desc=f"[MOVE] {item} -> {dst}")
+                aq.add(fops.move_file, item, dst, desc=f'[MOVE] {item} -> {dst}')
                 files_moved.append((item, dst))
                 continue
 
@@ -144,18 +144,18 @@ def organize_tv_show(
 
             if is_video(item) or is_audio(item):
                 dst = season_dir / item.name
-                aq.add(fops.move_file, item, dst, desc=f"[MOVE] {item} -> {dst}")
+                aq.add(fops.move_file, item, dst, desc=f'[MOVE] {item} -> {dst}')
                 files_moved.append((item, dst))
                 if is_video(dst):
                     moved_video_dsts.append(dst)
                 continue
 
             dst = season_dir / item.name
-            aq.add(fops.move_file, item, dst, desc=f"[MOVE] {item} -> {dst}")
+            aq.add(fops.move_file, item, dst, desc=f'[MOVE] {item} -> {dst}')
             files_moved.append((item, dst))
 
         except Exception as e:
-            errors.append(f"Error processing {item}: {e}")
+            errors.append(f'Error processing {item}: {e}')
 
     # Handle subtitles
     if config.locale_mapper and moved_video_dsts:
@@ -228,7 +228,7 @@ def organize_movie(
     else:
         flags = classify_extras_auto(items)
 
-    extra_dir = path / "EXTRA"
+    extra_dir = path / 'EXTRA'
     moved_video_dsts: list[Path] = []
 
     # Process items
@@ -237,18 +237,18 @@ def organize_movie(
             if item.is_dir():
                 if is_ex:
                     dst = extra_dir / item.name
-                    aq.add(fops.move_dir_atomic, item, dst, desc=f"[MOVE-DIR] {item} -> {dst}")
+                    aq.add(fops.move_dir_atomic, item, dst, desc=f'[MOVE-DIR] {item} -> {dst}')
                     files_moved.append((item, dst))
                 else:
                     aq.add(
-                        fops.move_dir_contents_to, item, path, desc=f"[FLATTEN] {item} -> {path}"
+                        fops.move_dir_contents_to, item, path, desc=f'[FLATTEN] {item} -> {path}'
                     )
                     files_moved.append((item, path))
                 continue
 
             if is_ex:
                 dst = extra_dir / item.name
-                aq.add(fops.move_file, item, dst, desc=f"[MOVE] {item} -> {dst}")
+                aq.add(fops.move_file, item, dst, desc=f'[MOVE] {item} -> {dst}')
                 files_moved.append((item, dst))
                 continue
 
@@ -257,18 +257,18 @@ def organize_movie(
 
             if is_video(item) or is_audio(item):
                 dst = path / item.name
-                aq.add(fops.move_file, item, dst, desc=f"[MOVE] {item} -> {dst}")
+                aq.add(fops.move_file, item, dst, desc=f'[MOVE] {item} -> {dst}')
                 files_moved.append((item, dst))
                 if is_video(dst):
                     moved_video_dsts.append(dst)
                 continue
 
             dst = path / item.name
-            aq.add(fops.move_file, item, dst, desc=f"[MOVE] {item} -> {dst}")
+            aq.add(fops.move_file, item, dst, desc=f'[MOVE] {item} -> {dst}')
             files_moved.append((item, dst))
 
         except Exception as e:
-            errors.append(f"Error processing {item}: {e}")
+            errors.append(f'Error processing {item}: {e}')
 
     # Handle subtitles
     if config.locale_mapper and moved_video_dsts:
@@ -310,17 +310,17 @@ def organize_directory(
         PermissionError: If insufficient permissions
     """
     if not path.is_dir():
-        raise ValueError(f"Not a directory: {path}")
+        raise ValueError(f'Not a directory: {path}')
 
     fops = FileOps(dry_run=config.dry_run)
 
-    if config.mode == "skip":
+    if config.mode == 'skip':
         return OrganizeResult([], [], [], [path])
-    elif config.mode == "show":
+    elif config.mode == 'show':
         if config.season is None:
-            raise ValueError("Season number required for TV show mode")
+            raise ValueError('Season number required for TV show mode')
         return organize_tv_show(path, config.season, config, fops)
-    elif config.mode == "movie":
+    elif config.mode == 'movie':
         return organize_movie(path, config, fops)
     else:
-        raise ValueError(f"Invalid mode: {config.mode}")
+        raise ValueError(f'Invalid mode: {config.mode}')

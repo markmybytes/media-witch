@@ -97,10 +97,10 @@ def parse_cli_rules(cli_rules: list[str]) -> list[Rule]:
     """
     rules = []
     for spec in cli_rules:
-        parts = [x.strip() for x in spec.split(",")]
+        parts = [x.strip() for x in spec.split(',')]
         if len(parts) != 3:
-            raise ValueError("Mapping rule must be: source,target,case_sensitive")
-        rules.append(Rule(parts[0], parts[1], parts[2].lower() in ("1", "true", "yes", "y")))
+            raise ValueError('Mapping rule must be: source,target,case_sensitive')
+        rules.append(Rule(parts[0], parts[1], parts[2].lower() in ('1', 'true', 'yes', 'y')))
     return rules
 
 
@@ -121,16 +121,16 @@ def load_csv_rules(csv_path: Path | None) -> list[Rule]:
     if not csv_path or not csv_path.exists():
         return []
     rules: list[Rule] = []
-    with csv_path.open("r", encoding="utf-8") as f:
+    with csv_path.open('r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         if not reader.fieldnames:
             return rules
         field = {k.lower(): k for k in reader.fieldnames}
         for row in reader:
-            src = row[field.get("source", "source")].strip()
+            src = row[field.get('source', 'source')].strip()
             if not src:
                 continue
-            tgt = row[field.get("target", "target")].strip()
-            cs = row[field.get("is_case_sensitive", "is_case_sensitive")].strip()
-            rules.append(Rule(src, tgt, cs.lower() in ("1", "true", "yes", "y")))
+            tgt = row[field.get('target', 'target')].strip()
+            cs = row[field.get('is_case_sensitive', 'is_case_sensitive')].strip()
+            rules.append(Rule(src, tgt, cs.lower() in ('1', 'true', 'yes', 'y')))
     return rules

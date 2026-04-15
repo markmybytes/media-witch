@@ -65,8 +65,8 @@ class SubtitleService:
         Returns:
             Rightmost dot-separated token, or empty string
         """
-        parts = sub.stem.split(".")
-        return parts[-1] if len(parts) > 1 else ""
+        parts = sub.stem.split('.')
+        return parts[-1] if len(parts) > 1 else ''
 
     @staticmethod
     def _stem_wo_token(sub: Path) -> str:
@@ -78,8 +78,8 @@ class SubtitleService:
         Returns:
             Stem without rightmost token
         """
-        parts = sub.stem.split(".")
-        return ".".join(parts[:-1]) if len(parts) > 1 else sub.stem
+        parts = sub.stem.split('.')
+        return '.'.join(parts[:-1]) if len(parts) > 1 else sub.stem
 
     @staticmethod
     def pairs_with(sub: Path, video: Path) -> bool:
@@ -92,7 +92,7 @@ class SubtitleService:
         Returns:
             True if subtitle pairs with video
         """
-        return sub.stem == video.stem or sub.stem.startswith(f"{video.stem}.")
+        return sub.stem == video.stem or sub.stem.startswith(f'{video.stem}.')
 
     def normalized_target(self, sub: Path, video: Path) -> Path:
         """Generate normalized target path for subtitle.
@@ -108,8 +108,8 @@ class SubtitleService:
         """
         t = self._right_most_token(sub)
         mapped = self.mapper.resolve(t) if t else t
-        stem = f"{self._stem_wo_token(sub)}.{mapped}" if t else video.stem
-        return video.with_name(f"{stem}{sub.suffix.lower()}")
+        stem = f'{self._stem_wo_token(sub)}.{mapped}' if t else video.stem
+        return video.with_name(f'{stem}{sub.suffix.lower()}')
 
     def plan(self, subs: list[Path], video_dst: Path, aq: ActionQueue) -> None:
         """Plan subtitle operations for action queue.
@@ -125,15 +125,15 @@ class SubtitleService:
             dst = video_dst.parent / self.normalized_target(sub, video_dst).name
             if sub.parent != video_dst.parent:
                 tmp = video_dst.parent / sub.name
-                aq.add(self.fops.move_file, sub, tmp, desc=f"[MOVE] {sub} -> {tmp}")
+                aq.add(self.fops.move_file, sub, tmp, desc=f'[MOVE] {sub} -> {tmp}')
                 if tmp != dst:
                     aq.add(
-                        self.fops.rename_file, tmp, dst, desc=f"[RENAME] {tmp.name} -> {dst.name}"
+                        self.fops.rename_file, tmp, dst, desc=f'[RENAME] {tmp.name} -> {dst.name}'
                     )
             else:
                 if sub != dst:
                     aq.add(
-                        self.fops.rename_file, sub, dst, desc=f"[RENAME] {sub.name} -> {dst.name}"
+                        self.fops.rename_file, sub, dst, desc=f'[RENAME] {sub.name} -> {dst.name}'
                     )
 
 
@@ -175,7 +175,7 @@ def rename_subtitles(
                 mapped_locale = config.locale_mapper.resolve(token) if token else token
                 if mapped_locale and mapped_locale not in allowed_locales:
                     if not config.dry_run:
-                        fops.remove_file(sub, label="[REMOVE]")
+                        fops.remove_file(sub, label='[REMOVE]')
                     removed.append(sub)
                     continue
 
@@ -194,7 +194,7 @@ def rename_subtitles(
                 else:
                     renamed.append((sub, dst))
         except Exception as e:
-            errors.append(f"Error processing {sub}: {e}")
+            errors.append(f'Error processing {sub}: {e}')
 
     return SubtitleResult(renamed=renamed, skipped=skipped, removed=removed, errors=errors)
 

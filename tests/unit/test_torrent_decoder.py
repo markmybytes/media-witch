@@ -25,8 +25,8 @@ class TestIntegerProperties:
     def test_integer_encoding_format(self, n: int) -> None:
         """Encoded integers should have format i<num>e."""
         encoded = bencode(n)
-        assert encoded.startswith(b"i")
-        assert encoded.endswith(b"e")
+        assert encoded.startswith(b'i')
+        assert encoded.endswith(b'e')
         assert str(n).encode() in encoded
 
     @given(st.integers())
@@ -39,8 +39,8 @@ class TestIntegerProperties:
 
     def test_zero_roundtrip(self) -> None:
         """Zero should encode and decode correctly."""
-        assert bdecode(b"i0e") == 0
-        assert bencode(0) == b"i0e"
+        assert bdecode(b'i0e') == 0
+        assert bencode(0) == b'i0e'
 
 
 class TestStringProperties:
@@ -59,22 +59,22 @@ class TestStringProperties:
         """Any string should encode and decode to bytes."""
         encoded = bencode(s)
         decoded = bdecode(encoded)
-        assert decoded == s.encode("utf-8")
+        assert decoded == s.encode('utf-8')
         assert isinstance(decoded, bytes)
 
     @given(st.binary())
     def test_string_encoding_format(self, s: bytes) -> None:
         """Encoded strings should have format <length>:<data>."""
         encoded = bencode(s)
-        assert b":" in encoded
-        length_part = encoded.split(b":")[0]
+        assert b':' in encoded
+        length_part = encoded.split(b':')[0]
         assert length_part.decode().isdigit()
         assert int(length_part) == len(s)
 
     def test_empty_string_roundtrip(self) -> None:
         """Empty string should encode and decode correctly."""
-        assert bdecode(b"0:") == b""
-        assert bencode(b"") == b"0:"
+        assert bdecode(b'0:') == b''
+        assert bencode(b'') == b'0:'
 
 
 class TestListProperties:
@@ -112,8 +112,8 @@ class TestListProperties:
 
     def test_empty_list_roundtrip(self) -> None:
         """Empty list should encode and decode correctly."""
-        assert bdecode(b"le") == []
-        assert bencode([]) == b"le"
+        assert bdecode(b'le') == []
+        assert bencode([]) == b'le'
 
 
 class TestDictProperties:
@@ -142,7 +142,7 @@ class TestDictProperties:
         encoded = bencode(d)
         decoded = bdecode(encoded)
         # Keys should be converted to bytes
-        expected = {k.encode("utf-8"): v for k, v in d.items()}
+        expected = {k.encode('utf-8'): v for k, v in d.items()}
         assert decoded == expected
 
     @given(
@@ -176,8 +176,8 @@ class TestDictProperties:
 
     def test_empty_dict_roundtrip(self) -> None:
         """Empty dictionary should encode and decode correctly."""
-        assert bdecode(b"de") == {}
-        assert bencode({}) == b"de"
+        assert bdecode(b'de') == {}
+        assert bencode({}) == b'de'
 
     @given(
         st.dictionaries(
@@ -248,12 +248,12 @@ class TestComplexStructures:
     def test_torrent_like_structure_roundtrip(self) -> None:
         """Torrent-like structures should roundtrip correctly."""
         data = {
-            b"announce": b"http://tracker.example.com:8080/announce",
-            b"info": {
-                b"name": b"MyFile.mkv",
-                b"length": 1073741824,
-                b"piece length": 262144,
-                b"pieces": b"x" * 20,  # Normally 20-byte SHA1 hashes
+            b'announce': b'http://tracker.example.com:8080/announce',
+            b'info': {
+                b'name': b'MyFile.mkv',
+                b'length': 1073741824,
+                b'piece length': 262144,
+                b'pieces': b'x' * 20,  # Normally 20-byte SHA1 hashes
             },
         }
         encoded = bencode(data)
@@ -273,42 +273,42 @@ class TestDecoderErrorHandling:
         except (ValueError, IndexError):
             pass
         except Exception as e:
-            pytest.fail(f"Unexpected exception type {type(e).__name__}: {e}")
+            pytest.fail(f'Unexpected exception type {type(e).__name__}: {e}')
 
     def test_invalid_start_character(self) -> None:
         """Invalid start character should raise ValueError."""
-        with pytest.raises(ValueError, match="Invalid bencode character"):
-            bdecode(b"x42e")
+        with pytest.raises(ValueError, match='Invalid bencode character'):
+            bdecode(b'x42e')
 
     def test_malformed_integer(self) -> None:
         """Malformed integer should raise error."""
         with pytest.raises(ValueError):
-            bdecode(b"i42")  # Missing 'e'
+            bdecode(b'i42')  # Missing 'e'
 
     def test_malformed_string(self) -> None:
         """Malformed string should raise error."""
         with pytest.raises(ValueError):
-            bdecode(b"5:ab")  # String too short
+            bdecode(b'5:ab')  # String too short
 
     def test_malformed_list(self) -> None:
         """Malformed list should raise error."""
         with pytest.raises(ValueError):
-            bdecode(b"li1e")  # Missing 'e'
+            bdecode(b'li1e')  # Missing 'e'
 
     def test_malformed_dict(self) -> None:
         """Malformed dictionary should raise error."""
         with pytest.raises(ValueError):
-            bdecode(b"d3:foo")  # Missing value and 'e'
+            bdecode(b'd3:foo')  # Missing value and 'e'
 
     def test_dict_with_non_bytes_key(self) -> None:
         """Dictionary with non-bytes key should raise error."""
-        with pytest.raises(ValueError, match="Dictionary keys must be bytes"):
-            bdecode(b"di1ei2ee")  # Integer key instead of bytes
+        with pytest.raises(ValueError, match='Dictionary keys must be bytes'):
+            bdecode(b'di1ei2ee')  # Integer key instead of bytes
 
     def test_empty_input(self) -> None:
         """Empty input should raise error."""
         with pytest.raises((ValueError, IndexError)):
-            bdecode(b"")
+            bdecode(b'')
 
 
 class TestEncoderErrorHandling:
@@ -316,16 +316,16 @@ class TestEncoderErrorHandling:
 
     def test_unsupported_type_raises_error(self) -> None:
         """Encoding unsupported types should raise TypeError."""
-        with pytest.raises(TypeError, match="Unsupported type"):
+        with pytest.raises(TypeError, match='Unsupported type'):
             bencode(3.14)  # float not supported
 
-        with pytest.raises(TypeError, match="Unsupported type"):
+        with pytest.raises(TypeError, match='Unsupported type'):
             bencode(None)  # None not supported
 
     def test_dict_with_invalid_key_type(self) -> None:
         """Dictionary with non-bytes/non-str keys should raise ValueError."""
-        with pytest.raises(ValueError, match="Dictionary keys must be bytes or str"):
-            bencode({1: b"value"})  # Integer key not supported
+        with pytest.raises(ValueError, match='Dictionary keys must be bytes or str'):
+            bencode({1: b'value'})  # Integer key not supported
 
 
 class TestBencodeInvariants:

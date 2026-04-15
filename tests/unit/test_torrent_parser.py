@@ -25,8 +25,8 @@ def valid_filename_bytes(draw: DrawFn, min_size: int = 1, max_size: int = 100) -
         )
     )
 
-    ext = draw(st.sampled_from([".mkv", ".mp4", ".avi", ".txt", ".zip", ""]))
-    return (name.strip() + ext).encode("utf-8", errors="replace")
+    ext = draw(st.sampled_from(['.mkv', '.mp4', '.avi', '.txt', '.zip', '']))
+    return (name.strip() + ext).encode('utf-8', errors='replace')
 
 
 @composite
@@ -35,7 +35,7 @@ def single_file_torrent_data(draw: DrawFn) -> dict:
     name = draw(valid_filename_bytes())
     length = draw(st.integers(min_value=0, max_value=10**12))
 
-    return {b"info": {b"name": name, b"length": length}}
+    return {b'info': {b'name': name, b'length': length}}
 
 
 @composite
@@ -45,7 +45,7 @@ def file_entry(draw: DrawFn) -> dict:
     path = [draw(valid_filename_bytes(min_size=1, max_size=50)) for _ in range(num_components)]
     length = draw(st.integers(min_value=0, max_value=10**10))
 
-    return {b"path": path, b"length": length}
+    return {b'path': path, b'length': length}
 
 
 @composite
@@ -55,7 +55,7 @@ def multi_file_torrent_data(draw: DrawFn) -> dict:
     num_files = draw(st.integers(min_value=0, max_value=100))
     files = [draw(file_entry()) for _ in range(num_files)]
 
-    return {b"info": {b"name": name, b"files": files}}
+    return {b'info': {b'name': name, b'files': files}}
 
 
 @composite
@@ -81,7 +81,7 @@ class TestSingleFileTorrentProperties:
     def test_single_file_total_size_equals_length(self, torrent_data: dict) -> None:
         """Single-file torrent total_size should equal length field."""
         info = TorrentInfo(torrent_data)
-        expected_size = torrent_data[b"info"][b"length"]
+        expected_size = torrent_data[b'info'][b'length']
         assert info.total_size == expected_size
 
     @given(single_file_torrent_data())
@@ -96,13 +96,13 @@ class TestSingleFileTorrentProperties:
         info = TorrentInfo(torrent_data)
         assert isinstance(info.name, str)
 
-        original_name = torrent_data[b"info"][b"name"]
-        assert info.name == original_name.decode("utf-8", errors="replace")
+        original_name = torrent_data[b'info'][b'name']
+        assert info.name == original_name.decode('utf-8', errors='replace')
 
     @given(valid_filename_bytes(), st.integers(min_value=0, max_value=10**15))
     def test_single_file_with_large_size(self, name: bytes, size: int) -> None:
         """Single-file torrents should handle very large file sizes."""
-        data = {b"info": {b"name": name, b"length": size}}
+        data = {b'info': {b'name': name, b'length': size}}
         info = TorrentInfo(data)
         assert info.total_size == size
 
@@ -112,8 +112,8 @@ class TestSingleFileTorrentProperties:
         info = TorrentInfo(torrent_data)
         path_parts, file_size = info.files[0]
 
-        expected_name = torrent_data[b"info"][b"name"].decode("utf-8", errors="replace")
-        expected_size = torrent_data[b"info"][b"length"]
+        expected_name = torrent_data[b'info'][b'name'].decode('utf-8', errors='replace')
+        expected_size = torrent_data[b'info'][b'length']
 
         assert path_parts == [expected_name]
         assert file_size == expected_size
@@ -132,8 +132,8 @@ class TestMultiFileTorrentProperties:
     def test_multi_file_total_size_is_sum(self, torrent_data: dict) -> None:
         """Multi-file torrent total_size should equal sum of all file lengths."""
         info = TorrentInfo(torrent_data)
-        files_data = torrent_data[b"info"][b"files"]
-        expected_size = sum(f[b"length"] for f in files_data)
+        files_data = torrent_data[b'info'][b'files']
+        expected_size = sum(f[b'length'] for f in files_data)
 
         assert info.total_size == expected_size
 
@@ -141,7 +141,7 @@ class TestMultiFileTorrentProperties:
     def test_multi_file_count_matches(self, torrent_data: dict) -> None:
         """Number of files should match input."""
         info = TorrentInfo(torrent_data)
-        expected_count = len(torrent_data[b"info"][b"files"])
+        expected_count = len(torrent_data[b'info'][b'files'])
 
         assert len(info.files) == expected_count
 
@@ -151,8 +151,8 @@ class TestMultiFileTorrentProperties:
         info = TorrentInfo(torrent_data)
         assert isinstance(info.name, str)
 
-        original_name = torrent_data[b"info"][b"name"]
-        assert info.name == original_name.decode("utf-8", errors="replace")
+        original_name = torrent_data[b'info'][b'name']
+        assert info.name == original_name.decode('utf-8', errors='replace')
 
     @given(multi_file_torrent_data())
     def test_multi_file_paths_decoded_correctly(self, torrent_data: dict) -> None:
@@ -160,11 +160,11 @@ class TestMultiFileTorrentProperties:
         info = TorrentInfo(torrent_data)
 
         for (path_parts, _), file_data in zip(
-            info.files, torrent_data[b"info"][b"files"], strict=False
+            info.files, torrent_data[b'info'][b'files'], strict=False
         ):
             assert all(isinstance(part, str) for part in path_parts)
 
-            expected_path = [part.decode("utf-8", errors="replace") for part in file_data[b"path"]]
+            expected_path = [part.decode('utf-8', errors='replace') for part in file_data[b'path']]
             assert path_parts == expected_path
 
     @given(multi_file_torrent_data())
@@ -172,13 +172,13 @@ class TestMultiFileTorrentProperties:
         """File sizes should match input data."""
         info = TorrentInfo(torrent_data)
 
-        for (_, size), file_data in zip(info.files, torrent_data[b"info"][b"files"], strict=False):
-            assert size == file_data[b"length"]
+        for (_, size), file_data in zip(info.files, torrent_data[b'info'][b'files'], strict=False):
+            assert size == file_data[b'length']
 
     @given(st.integers(min_value=0, max_value=1000))
     def test_empty_files_list(self, total_size_should_be_zero: int) -> None:
         """Multi-file torrent with empty files list should have zero total size."""
-        data = {b"info": {b"name": b"Empty", b"files": []}}
+        data = {b'info': {b'name': b'Empty', b'files': []}}
         info = TorrentInfo(data)
 
         assert info.files == []
@@ -192,14 +192,14 @@ class TestTorrentEncodingProperties:
     @given(st.text(min_size=1, max_size=100))
     def test_utf8_name_roundtrip(self, name: str) -> None:
         """UTF-8 encoded names should decode correctly."""
-        data = {b"info": {b"name": name.encode("utf-8"), b"length": 1024}}
+        data = {b'info': {b'name': name.encode('utf-8'), b'length': 1024}}
         info = TorrentInfo(data)
         assert info.name == name
 
     @given(st.binary(min_size=1, max_size=100))
     def test_invalid_utf8_handled_gracefully(self, invalid_bytes: bytes) -> None:
         """Invalid UTF-8 should not crash, uses replacement character."""
-        data = {b"info": {b"name": invalid_bytes, b"length": 1024}}
+        data = {b'info': {b'name': invalid_bytes, b'length': 1024}}
 
         info = TorrentInfo(data)
         assert isinstance(info.name, str)
@@ -208,10 +208,10 @@ class TestTorrentEncodingProperties:
     def test_utf8_file_paths(self, path_parts: list[str]) -> None:
         """UTF-8 encoded file paths should decode correctly."""
         data = {
-            b"info": {
-                b"name": b"Root",
-                b"files": [
-                    {b"path": [part.encode("utf-8") for part in path_parts], b"length": 100}
+            b'info': {
+                b'name': b'Root',
+                b'files': [
+                    {b'path': [part.encode('utf-8') for part in path_parts], b'length': 100}
                 ],
             }
         }
@@ -226,10 +226,10 @@ class TestParseTorrentProperties:
         """Parsing single-file torrent from file should work."""
         from media_witch.features.torrent.decoder import bencode
 
-        torrent_data = {b"info": {b"name": b"test.file", b"length": 1024}}
+        torrent_data = {b'info': {b'name': b'test.file', b'length': 1024}}
 
         torrent_content = bencode(torrent_data)
-        torrent_path = tmp_path / "test.torrent"
+        torrent_path = tmp_path / 'test.torrent'
         torrent_path.write_bytes(torrent_content)
 
         info = parse_torrent(torrent_path)
@@ -242,17 +242,17 @@ class TestParseTorrentProperties:
         from media_witch.features.torrent.decoder import bencode
 
         torrent_data = {
-            b"info": {
-                b"name": b"Test",
-                b"files": [
-                    {b"path": [b"file1.txt"], b"length": 100},
-                    {b"path": [b"file2.txt"], b"length": 200},
+            b'info': {
+                b'name': b'Test',
+                b'files': [
+                    {b'path': [b'file1.txt'], b'length': 100},
+                    {b'path': [b'file2.txt'], b'length': 200},
                 ],
             }
         }
 
         torrent_content = bencode(torrent_data)
-        torrent_path = tmp_path / "test.torrent"
+        torrent_path = tmp_path / 'test.torrent'
         torrent_path.write_bytes(torrent_content)
 
         info = parse_torrent(torrent_path)
@@ -263,20 +263,20 @@ class TestParseTorrentProperties:
     def test_parse_nonexistent_file_raises_error(self) -> None:
         """Parsing non-existent file should raise FileNotFoundError."""
         with pytest.raises(FileNotFoundError):
-            parse_torrent(Path("/nonexistent/path/file.torrent"))
+            parse_torrent(Path('/nonexistent/path/file.torrent'))
 
     def test_parse_invalid_bencode_raises_error(self, tmp_path: Path) -> None:
         """Parsing invalid bencode should raise ValueError."""
-        torrent_path = tmp_path / "invalid.torrent"
-        torrent_path.write_bytes(b"invalid bencode data")
+        torrent_path = tmp_path / 'invalid.torrent'
+        torrent_path.write_bytes(b'invalid bencode data')
 
         with pytest.raises((ValueError, IndexError)):
             parse_torrent(torrent_path)
 
     def test_parse_empty_file_raises_error(self, tmp_path: Path) -> None:
         """Parsing empty file should raise error."""
-        torrent_path = tmp_path / "empty.torrent"
-        torrent_path.write_bytes(b"")
+        torrent_path = tmp_path / 'empty.torrent'
+        torrent_path.write_bytes(b'')
 
         with pytest.raises((ValueError, IndexError)):
             parse_torrent(torrent_path)
@@ -345,7 +345,7 @@ class TestRealWorldScenarios:
     """Property-based tests for realistic torrent structures."""
 
     @given(
-        st.text(alphabet="abcdefghijklmnopqrstuvwxyz", min_size=1, max_size=30),
+        st.text(alphabet='abcdefghijklmnopqrstuvwxyz', min_size=1, max_size=30),
         st.integers(min_value=1, max_value=20),
         st.integers(min_value=1, max_value=50),
     )
@@ -357,30 +357,30 @@ class TestRealWorldScenarios:
         for ep in range(1, num_episodes + 1):
             files.append(
                 {
-                    b"path": [f"{show_name}.S{season:02d}E{ep:02d}.mkv".encode()],
-                    b"length": 1500000000 + ep * 1000,
+                    b'path': [f'{show_name}.S{season:02d}E{ep:02d}.mkv'.encode()],
+                    b'length': 1500000000 + ep * 1000,
                 }
             )
 
-        data = {b"info": {b"name": f"{show_name}.Season.{season}".encode(), b"files": files}}
+        data = {b'info': {b'name': f'{show_name}.Season.{season}'.encode(), b'files': files}}
 
         info = TorrentInfo(data)
         assert info.is_single_file is False
         assert len(info.files) == num_episodes
 
     @given(
-        st.text(alphabet="abcdefghijklmnopqrstuvwxyz", min_size=1, max_size=30),
+        st.text(alphabet='abcdefghijklmnopqrstuvwxyz', min_size=1, max_size=30),
         st.integers(min_value=1000000, max_value=100000000000),
     )
     def test_movie_with_extras_structure(self, movie_name: str, main_size: int) -> None:
         """Movie torrent with main file and extras."""
         data = {
-            b"info": {
-                b"name": f"{movie_name}.2024.1080p".encode(),
-                b"files": [
-                    {b"path": [f"{movie_name}.2024.1080p.mkv".encode()], b"length": main_size},
-                    {b"path": [b"Extras", b"Behind.The.Scenes.mkv"], b"length": main_size // 10},
-                    {b"path": [b"Extras", b"Trailer.mkv"], b"length": main_size // 50},
+            b'info': {
+                b'name': f'{movie_name}.2024.1080p'.encode(),
+                b'files': [
+                    {b'path': [f'{movie_name}.2024.1080p.mkv'.encode()], b'length': main_size},
+                    {b'path': [b'Extras', b'Behind.The.Scenes.mkv'], b'length': main_size // 10},
+                    {b'path': [b'Extras', b'Trailer.mkv'], b'length': main_size // 50},
                 ],
             }
         }
@@ -392,9 +392,9 @@ class TestRealWorldScenarios:
     @given(st.integers(min_value=1, max_value=10000))
     def test_many_small_files(self, num_files: int) -> None:
         """Torrent with many small files."""
-        files = [{b"path": [f"file{i}.txt".encode()], b"length": 100} for i in range(num_files)]
+        files = [{b'path': [f'file{i}.txt'.encode()], b'length': 100} for i in range(num_files)]
 
-        data = {b"info": {b"name": b"ManyFiles", b"files": files}}
+        data = {b'info': {b'name': b'ManyFiles', b'files': files}}
 
         info = TorrentInfo(data)
         assert len(info.files) == num_files
@@ -403,7 +403,7 @@ class TestRealWorldScenarios:
     @given(st.integers(min_value=10**9, max_value=10**12))
     def test_very_large_file(self, size: int) -> None:
         """Test handling of very large files (>1GB)."""
-        data = {b"info": {b"name": b"LargeFile.mkv", b"length": size}}
+        data = {b'info': {b'name': b'LargeFile.mkv', b'length': size}}
 
         info = TorrentInfo(data)
         assert info.total_size == size

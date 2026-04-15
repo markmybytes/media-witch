@@ -51,7 +51,7 @@ class FileOps:
         if n.exists():
             self._ensured.add(n)
             return
-        self._log(f"[MKDIR] {n}")
+        self._log(f'[MKDIR] {n}')
         if not self.dry:
             n.mkdir(parents=True, exist_ok=True)
         self._ensured.add(n)
@@ -73,13 +73,13 @@ class FileOps:
         """
         s, d = self._norm(src), self._norm(dst)
         if s == d:
-            self._log(f"[SKIP] Already at dest: {src}")
+            self._log(f'[SKIP] Already at dest: {src}')
             return
         self.ensure_parent(d)
         if d.exists():
-            self._log(f"[SKIP] Exists: {dst}")
+            self._log(f'[SKIP] Exists: {dst}')
             return
-        self._log(f"[MOVE] {src} -> {dst}")
+        self._log(f'[MOVE] {src} -> {dst}')
         if not self.dry:
             shutil.move(str(src), str(dst))
 
@@ -95,13 +95,13 @@ class FileOps:
             return
         self.ensure_parent(d)
         if d.exists():
-            self._log(f"[SKIP] Exists: {dst}")
+            self._log(f'[SKIP] Exists: {dst}')
             return
-        self._log(f"[RENAME] {src.name} -> {dst.name}")
+        self._log(f'[RENAME] {src.name} -> {dst.name}')
         if not self.dry:
             src.rename(dst)
 
-    def remove_file(self, path: Path, label: str = "[REMOVE]") -> None:
+    def remove_file(self, path: Path, label: str = '[REMOVE]') -> None:
         """Remove a file.
 
         Args:
@@ -110,13 +110,13 @@ class FileOps:
         """
         p = self._norm(path)
         if not p.exists():
-            self._log(f"[SKIP] Not found: {path}")
+            self._log(f'[SKIP] Not found: {path}')
             return
-        self._log(f"{label} {path}")
+        self._log(f'{label} {path}')
         if not self.dry:
             p.unlink()
 
-    def write_text_if_absent(self, path: Path, content: str, label: str = "[WRITE]") -> None:
+    def write_text_if_absent(self, path: Path, content: str, label: str = '[WRITE]') -> None:
         """Write text content to file if it doesn't exist.
 
         Args:
@@ -126,11 +126,11 @@ class FileOps:
         """
         self.ensure_parent(path)
         if path.exists():
-            self._log(f"[SKIP] Exists: {path}")
+            self._log(f'[SKIP] Exists: {path}')
             return
-        self._log(f"{label} {path}")
+        self._log(f'{label} {path}')
         if not self.dry:
-            path.write_text(content, encoding="utf-8")
+            path.write_text(content, encoding='utf-8')
 
     def remove_dir_if_empty(self, dir_path: Path) -> None:
         """Remove directory if it's empty.
@@ -142,7 +142,7 @@ class FileOps:
             next(dir_path.iterdir())
         except StopIteration:
             n = self._norm(dir_path)
-            self._log(f"[RMDIR] {n}")
+            self._log(f'[RMDIR] {n}')
             if not self.dry:
                 n.rmdir()
             if n in self._ensured:
@@ -191,14 +191,14 @@ class FileOps:
         """
         s, d = self._norm(src_dir), self._norm(dst_dir)
         if s == d:
-            self._log(f"[SKIP] Already at dest: {src_dir}")
+            self._log(f'[SKIP] Already at dest: {src_dir}')
             return
         if not d.exists():
             self.ensure_parent(d)
-            self._log(f"[MOVE-DIR] {src_dir} -> {dst_dir}")
+            self._log(f'[MOVE-DIR] {src_dir} -> {dst_dir}')
             if not self.dry:
                 shutil.move(str(src_dir), str(dst_dir))
             self._ensured.add(d)
             return
-        self._log(f"[MERGE-DIR] {src_dir} -> {dst_dir}")
+        self._log(f'[MERGE-DIR] {src_dir} -> {dst_dir}')
         self.move_tree_merge(src_dir, dst_dir)

@@ -67,10 +67,10 @@ def create_from_torrent(
         created_dirs.append(base_dir)
 
         if config.verbose:
-            print(f"Creating fake files in: {base_dir}")
-            print(f"Torrent: {info.name}")
-            print(f"Total files: {len(info.files)}")
-            print(f"Total size: {info.total_size:,} bytes\n")
+            print(f'Creating fake files in: {base_dir}')
+            print(f'Torrent: {info.name}')
+            print(f'Total files: {len(info.files)}')
+            print(f'Total size: {info.total_size:,} bytes\n')
 
         # Create files
         for path_parts, _size in info.files:
@@ -92,18 +92,18 @@ def create_from_torrent(
                 if config.verbose and len(created_files) % 100 == 0:
                     try:
                         rel_path = file_path.relative_to(base_dir)
-                        print(f"  Created: {rel_path} (0 bytes)")
+                        print(f'  Created: {rel_path} (0 bytes)')
                     except ValueError:
-                        print(f"  Created: .../{file_path.name} (0 bytes)")
+                        print(f'  Created: .../{file_path.name} (0 bytes)')
 
             except OSError as e:
-                errors.append(f"Failed to create {file_path.name}: {e}")
+                errors.append(f'Failed to create {file_path.name}: {e}')
 
         if config.verbose:
-            print(f"\nDone! {len(created_files)} file(s) created")
+            print(f'\nDone! {len(created_files)} file(s) created')
 
     except Exception as e:
-        errors.append(f"Error processing {torrent_path}: {e}")
+        errors.append(f'Error processing {torrent_path}: {e}')
 
     return TorrentResult(
         created_files=created_files,

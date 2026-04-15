@@ -24,7 +24,7 @@ class ActionQueue:
         self.fops = fops
         self._q: list[tuple[Callable, tuple, dict, str]] = []
 
-    def add(self, func: Callable, *args: Any, desc: str = "", **kwargs: Any) -> None:
+    def add(self, func: Callable, *args: Any, desc: str = '', **kwargs: Any) -> None:
         """Add an action to the queue.
 
         Args:
@@ -42,11 +42,11 @@ class ActionQueue:
         """
         if self.fops.dry:
             if not self._q:
-                self.fops._log("[DRY-RUN] No actions.")
+                self.fops._log('[DRY-RUN] No actions.')
                 return
-            self.fops._log("[DRY-RUN] Planned actions:")
+            self.fops._log('[DRY-RUN] Planned actions:')
             for _, _, _, desc in self._q:
-                self.fops._log(desc if desc else "[DRY-RUN] action")
+                self.fops._log(desc if desc else '[DRY-RUN] action')
             return
         for func, args, kwargs, _ in self._q:
             func(*args, **kwargs)
