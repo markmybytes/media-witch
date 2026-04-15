@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import os
 import shutil
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Set
 
 
 class FileOps:
@@ -29,7 +29,7 @@ class FileOps:
         """
         self.dry = dry_run
         self._log = logger or print
-        self._ensured: Set[Path] = set()
+        self._ensured: set[Path] = set()
 
     def _norm(self, p: Path) -> Path:
         """Normalize a path to absolute form."""

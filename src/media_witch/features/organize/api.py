@@ -11,7 +11,7 @@ from ...core.fileops import FileOps
 from ...core.media import is_audio, is_subtitle, is_video, list_files_and_dirs
 from ...core.patterns import has_episode_pattern, natural_sort_key
 from ..nfo.api import NFOConfig, generate_episode_nfos
-from ..subtitles.api import SubtitleConfig, SubtitleService, rename_subtitles
+from ..subtitles.api import SubtitleConfig, rename_subtitles
 from ..subtitles.locale import LocaleMapper
 
 

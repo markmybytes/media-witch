@@ -5,11 +5,14 @@ from pathlib import Path
 import pytest
 
 from media_witch.core.fileops import FileOps
-from media_witch.features.organize.api import (OrganizeConfig, OrganizeResult,
-                                               classify_extras_auto,
-                                               organize_directory,
-                                               organize_movie,
-                                               organize_tv_show)
+from media_witch.features.organize.api import (
+    OrganizeConfig,
+    OrganizeResult,
+    classify_extras_auto,
+    organize_directory,
+    organize_movie,
+    organize_tv_show,
+)
 from media_witch.features.subtitles.locale import LocaleMapper, Rule
 
 

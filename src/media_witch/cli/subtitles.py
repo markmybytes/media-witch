@@ -7,10 +7,8 @@ from pathlib import Path
 import click
 
 from ..core.media import is_subtitle, is_video
-from ..features.subtitles.api import (SubtitleConfig, pair_subtitles,
-                                      rename_subtitles)
-from ..features.subtitles.locale import (LocaleMapper, load_csv_rules,
-                                         parse_cli_rules)
+from ..features.subtitles.api import SubtitleConfig, pair_subtitles, rename_subtitles
+from ..features.subtitles.locale import LocaleMapper, load_csv_rules, parse_cli_rules
 from .common import common_options, locale_csv_option, locale_map_option
 
 

@@ -8,9 +8,12 @@ from hypothesis import assume, given
 from hypothesis import strategies as st
 from hypothesis.strategies import composite
 
-from media_witch.features.subtitles.locale import (LocaleMapper, Rule,
-                                                   load_csv_rules,
-                                                   parse_cli_rules)
+from media_witch.features.subtitles.locale import (
+    LocaleMapper,
+    Rule,
+    load_csv_rules,
+    parse_cli_rules,
+)
 
 
 # Custom strategies

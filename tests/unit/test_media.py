@@ -2,10 +2,7 @@
 
 from pathlib import Path
 
-import pytest
-
-from media_witch.core.media import (is_audio, is_subtitle, is_video,
-                                    list_files_and_dirs)
+from media_witch.core.media import is_audio, is_subtitle, is_video, list_files_and_dirs
 
 
 class TestIsVideo:

@@ -2,10 +2,7 @@
 
 from pathlib import Path
 
-import pytest
-
-from media_witch.features.nfo.api import (NFOConfig, generate_episode_nfos,
-                                          generate_nfo_content)
+from media_witch.features.nfo.api import NFOConfig, generate_episode_nfos, generate_nfo_content
 
 
 class TestGenerateNfoContent:

@@ -2,11 +2,12 @@
 
 from pathlib import Path
 
-import pytest
-
-from media_witch.features.torrent.api import (TorrentConfig, TorrentResult,
-                                              create_from_torrent,
-                                              create_from_torrents)
+from media_witch.features.torrent.api import (
+    TorrentConfig,
+    TorrentResult,
+    create_from_torrent,
+    create_from_torrents,
+)
 
 
 class TestTorrentConfig:

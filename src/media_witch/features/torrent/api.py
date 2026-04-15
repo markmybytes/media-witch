@@ -94,7 +94,7 @@ def create_from_torrent(
                     except ValueError:
                         print(f"  Created: .../{file_path.name} (0 bytes)")
 
-            except (OSError, IOError) as e:
+            except OSError as e:
                 errors.append(f"Failed to create {file_path.name}: {e}")
 
         if config.verbose:

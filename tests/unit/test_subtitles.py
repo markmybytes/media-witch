@@ -2,13 +2,13 @@
 
 from pathlib import Path
 
-import pytest
-
 from media_witch.core.fileops import FileOps
-from media_witch.features.subtitles.api import (SubtitleConfig,
-                                                SubtitleService,
-                                                pair_subtitles,
-                                                rename_subtitles)
+from media_witch.features.subtitles.api import (
+    SubtitleConfig,
+    SubtitleService,
+    pair_subtitles,
+    rename_subtitles,
+)
 from media_witch.features.subtitles.locale import LocaleMapper, Rule
 
 

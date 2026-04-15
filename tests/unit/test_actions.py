@@ -1,8 +1,6 @@
 """Unit tests for ActionQueue class."""
 
-from pathlib import Path
 
-import pytest
 
 from media_witch.core.actions import ActionQueue
 from media_witch.core.fileops import FileOps
