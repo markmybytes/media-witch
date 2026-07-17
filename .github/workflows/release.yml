@@ -35,7 +35,10 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -e .
-          pip install pyinstaller
+          pip install pyinstaller pillow
+
+      - name: Convert icon to ICO
+        run: python -c "from PIL import Image; Image.open('assets/icon.png').save('icon.ico', sizes=[(256,256)])"
 
       - name: Install UPX
         run: |
@@ -49,6 +52,7 @@ jobs:
         run: |
           pyinstaller --onefile \
             --name media-witch_${{ matrix.target }}_amd64 \
+            --icon=icon.ico \
             --collect-all media_witch \
             src/media_witch/cli/main.py
 
