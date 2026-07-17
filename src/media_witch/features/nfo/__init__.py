@@ -1,0 +1,1 @@
+"""NFO file generation feature."""
