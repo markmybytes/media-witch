@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux
+            ext: ''
+          - os: windows-latest
+            target: windows
+            ext: '.exe'
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e .
+          pip install pyinstaller
+
+      - name: Install UPX
+        run: |
+          if [[ '${{ matrix.target }}' == 'linux' ]]; then
+            sudo apt-get update && sudo apt-get install -y upx
+          else
+            choco install upx --no-progress
+          fi
+
+      - name: Build binary
+        run: |
+          pyinstaller --onefile \
+            --name media-witch_${{ matrix.target }}_amd64 \
+            --collect-all media_witch \
+            src/media_witch/cli/main.py
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: binary-${{ matrix.target }}
+          path: dist/media-witch_${{ matrix.target }}_amd64*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: release-artifacts
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create ${{ github.ref_name }} \
+            release-artifacts/binary-*/* \
+            --generate-notes \
+            --title "${{ github.ref_name }}"
